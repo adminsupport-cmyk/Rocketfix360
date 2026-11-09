@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Financial records are modified only by Cloud Functions using the Admin SDK.
+    // No direct client writes, including for owners.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

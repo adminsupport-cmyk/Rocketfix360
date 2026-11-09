@@ -1,0 +1,11 @@
+{
+  "name": "rocketfix-360-staging",
+  "private": true,
+  "scripts": {
+    "audit:sources": "node tools/audit-sources.cjs",
+    "test": "node --test tests/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.cjs",
+    "emulators": "firebase emulators:start --project demo-rocketfix-360 --only auth,firestore,functions,hosting",
+    "test:emulators": "node tools/run-emulator-tests.cjs"
+  }
+}
