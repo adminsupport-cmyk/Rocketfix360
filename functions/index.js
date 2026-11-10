@@ -9,6 +9,7 @@ const providerSecrets=notificationPolicy.externalSendingAuthorized?Object.values
 const providerAdapter=createProviderAdapter({readCredentials:()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]))});
 const {onDocumentCreated}=require('firebase-functions/v2/firestore');
 const admin=require('firebase-admin');
+const {FieldValue}=require('firebase-admin/firestore');
 const {createHash}=require('node:crypto');
 const {validate,earnings,editStatuses,frameStatuses}=require('./core');
 const {quoteOrder,pricingConfig,letter,projection,date}=require('./workflows');
@@ -69,7 +70,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
    const old=prior?.items.find(x=>x.itemKey===it.itemKey);
    if(old?.lateLetter&&it.addOnType)throw Error('Late letter already paid; do not add another letter charge');
    if(old?.addOnType==='Personalized Letter'&&(it.addOnType!==old.addOnType||it.addOnCommissionRecipient!==old.addOnCommissionRecipient))throw Error('Paid letter and commission recipient cannot change');
-   if(old){for(const k of ['status','trackingNumber','mockupUrl','completedAt','lateLetter'])if(old[k]!==undefined)it[k]=old[k];}
+   if(old){for(const k of ['status','fileUrl','assignedTo','trackingNumber','mockupUrl','completedAt','lateLetter'])if(old[k]!==undefined)it[k]=old[k];}
   }
   const assignments=clean.items.filter(x=>x.assignedTo);
   for(const it of assignments){const staff=await t.get(db.doc('staff/'+it.assignedTo));if(!staff.exists||staff.data().active!==true||staff.data().role!=='editor')throw Error('Assigned employee must be an active editor');}
@@ -119,7 +120,7 @@ exports.updateItemStatus=call(['owner','admin','encoder','editor','production'],
   if(mockupUrl!==undefined){if(it.kind!=='frame')throw Error('Frame mockup only');it.mockupUrl=link(mockupUrl);}
   if(trackingNumber!==undefined){if(it.kind!=='frame')throw Error('Frame tracking only');it.trackingNumber=String(trackingNumber).trim().slice(0,120);}
   const old=it.status;it.status=status;
-  t.update(ref,{items,updatedAt:now(),version:admin.firestore.FieldValue.increment(1)});
+  t.update(ref,{items,updatedAt:now(),version:FieldValue.increment(1)});
   t.create(db.collection('audit').doc(),{action:'ITEM_STATUS',posId,actor:actor.uid,at:now(),itemKey,old,status});
   return {old,kind:it.kind,order};
  });
@@ -132,7 +133,7 @@ exports.voidOrder=call(['owner','admin'],async ({posId,expectedVersion,reason},a
   const o=snap.data();if(o.voidedAt)throw Error('Already voided');
   if(o.version!==expectedVersion)throw Error('Refresh order before voiding');
   if(o.items.some(i=>i.kind==='frame'&&(i.status!=='HOLD'||i.trackingNumber||i.mockupUrl||i.lateLetter)))throw Error('Frame has production activity. Reconcile manually before voiding');
-  t.update(ref,{voidedAt:now(),voidReason:String(reason),voidedBy:actor.uid,status:'VOIDED',updatedAt:now(),version:admin.firestore.FieldValue.increment(1)});
+  t.update(ref,{voidedAt:now(),voidReason:String(reason),voidedBy:actor.uid,status:'VOIDED',updatedAt:now(),version:FieldValue.increment(1)});
   for(const e of earnings(o))t.update(db.doc('earnings/'+encodeURIComponent(e.key)),{status:'VOIDED',updatedAt:now()});
   t.create(db.collection('audit').doc(),{posId,action:'VOID',actor:actor.uid,reason:String(reason),at:now()});
  });return {ok:true};

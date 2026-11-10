@@ -1,3 +1,11 @@
+# Fast-track staging — November 10, 2026
+
+Branch: `staging/firebase-pos-fast-track`, based on preserved `recovery/rocketfix360-32-transcript`. Fixed Firestore FieldValue imports and preservation of editor file/assignment workflow data during financial edits; initial notifications remain deduplicated. Fixed hidden role-navigation CSS. Added guarded separate-project deployment artifacts/script and portable emulator launch helpers.
+
+Validation: 34/34 unit tests, 16/16 emulator test records, syntax and build pass. Actual browser employee login (owner/editor/production), editing/framing/combined remittances, history, sales/earnings, queues and simulated notifications pass. Frame-only integration covers discount, tip, Excess and letter commission. No existing test expectations were weakened. No confirmed separate staging project configuration exists; no remote Firebase deployment occurred. Local browser: http://127.0.0.1:5050. Quick start and final deployment command: [staging/README.md](../staging/README.md). Real sending remains disabled; frame prices are synthetic fixtures only. Production parity/approved pricing/migration remain open. Main and recovery branch preserved; no live Sheets access.
+
+---
+
 # GitHub verification — November 10, 2026 (Asia/Manila)
 
 **The original development branch is not pushed:** GitHub did not advertise `development/rocketfix360-integration-prep`, and an exact fetch of `19f76b212f5539b02214f78d5e74d56a0d5ae8d1` returned `upload-pack: not our ref`. It must not be described as present on GitHub.

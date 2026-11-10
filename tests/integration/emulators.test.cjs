@@ -108,3 +108,12 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  const r=await fetch('http://127.0.0.1:5050');assert.ok(r.ok);assert.match(await r.text(),/app.bundle.js/);const js=await fetch('http://127.0.0.1:5050/app.bundle.js');assert.ok(js.ok);assert.match(await js.text(),/connectAuthEmulator/);
  });
 });
+test('frame-only fixture validates discounts, tips, Excess and initial letter commission',async()=>{
+ const order={...base,posId:'66666666',received:1200,discount:49,tip:10,items:[{kind:'frame',existingId:'XY9Z8',amount:799,size:'10"x13" - Small',shippingFee:50,addOnType:'Personalized Letter',addOnFont:'Regular',addOnColor:'Pink',addOnMessage:'N/A',addOnCommissionRecipient:'Renz Malenab'}]};
+ const result=await save(order);assert.equal(result.version,1);
+ const o=(await call('getOrder',{posId:order.posId})).order;
+ assert.equal(o.due,1010);assert.equal(o.discount,49);assert.equal(o.tip,10);assert.equal(o.excess,190);assert.equal(o.editPaid,0);assert.equal(o.framePaid,1000);
+ assert.equal(o.pricingStatus,'UNVERIFIED_FIXTURE');assert.equal(o.productionEligible,false);
+ assert.equal((await db.doc('earnings/LETTER%3AXY9Z8').get()).data().amount,50);
+ assert.equal((await save(order)).version,1);
+});

@@ -1,0 +1,10 @@
+{
+  "confirmedSeparateStaging": false,
+  "projectId": "YOUR_SEPARATE_FIREBASE_PROJECT-staging",
+  "firebaseConfig": {
+    "apiKey": "REPLACE_WITH_STAGING_WEB_APP_KEY",
+    "authDomain": "YOUR_SEPARATE_FIREBASE_PROJECT-staging.firebaseapp.com",
+    "projectId": "YOUR_SEPARATE_FIREBASE_PROJECT-staging",
+    "appId": "REPLACE_WITH_STAGING_WEB_APP_ID"
+  }
+}

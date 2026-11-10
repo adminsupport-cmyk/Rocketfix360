@@ -1,11 +1,11 @@
 'use strict';
 const {spawnSync}=require('node:child_process'),path=require('node:path'),fs=require('node:fs');
 const root=path.resolve(__dirname,'..'),runtime=path.join(root,'.runtime/run');fs.mkdirSync(runtime,{recursive:true});
-const cli=process.env.RF_FIREBASE_CLI||'/workspace/rocketfix-toolchain/node_modules/firebase-tools/lib/bin/firebase.js';
+const cli=require('./firebase-cli.cjs').cliPath();
 const subset=process.argv.slice(2);
 if(subset.length&&!(subset.length===1&&subset[0]==='--auth-hosting'))throw Error('Unknown validation subset');
 const authOnly=subset[0]==='--auth-hosting';
 const quote=s=>"'"+s.replace(/'/g,"'\\''")+"'";
 const command=authOnly?quote(process.execPath)+' '+quote(path.join(root,'tools/smoke-auth-hosting.cjs')):'npm --prefix '+quote(root)+' run test:integration';
-const run=spawnSync(process.execPath,[cli,'--config',path.join(root,'firebase.json'),'emulators:exec','--project','demo-rocketfix-360','--only',authOnly?'auth,hosting':'auth,firestore,functions,hosting',command],{cwd:runtime,stdio:'inherit',env:{...process.env,XDG_CONFIG_HOME:path.join(root,'.runtime/firebase'),FIREBASE_CLI_DISABLE_UPDATE_CHECK:'true',FIREBASE_EMULATORS_PATH:process.env.FIREBASE_EMULATORS_PATH||'/workspace/rocketfix-toolchain/emulators'}});
+const run=spawnSync(process.execPath,[cli,'--config',path.join(root,'firebase.json'),'emulators:exec','--project','demo-rocketfix-360','--only',authOnly?'auth,hosting':'auth,firestore,functions,hosting',command],{cwd:runtime,stdio:'inherit',env:{...process.env,XDG_CONFIG_HOME:path.join(root,'.runtime/firebase'),FIREBASE_CLI_DISABLE_UPDATE_CHECK:'true',FIREBASE_EMULATORS_PATH:require('./firebase-cli.cjs').emulatorCache()}});
 if(run.error)console.error(run.error.message);process.exit(run.status??1);

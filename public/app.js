@@ -1,7 +1,7 @@
 import {initializeApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
-import {firebaseConfig,functionsRegion} from './config.js';
+import {firebaseConfig,functionsRegion,useEmulators} from './config.js';
 const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const php=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 let pricing={custom:{},rates:{}},staff=[],requestId=crypto.randomUUID();
@@ -114,8 +114,9 @@ bindWorkflows();
 bootUI();
 if(firebaseConfig.apiKey.startsWith('REPLACE_')){$('loginError').textContent='Setup required: update public/config.js with your Firebase Web App config.';}
 else{
- if(!['127.0.0.1','localhost'].includes(location.hostname)||firebaseConfig.projectId!=='demo-rocketfix-360')throw Error('Staging app requires local demo emulators');
- const app=initializeApp(firebaseConfig);auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});functions=getFunctions(app,functionsRegion);connectFunctionsEmulator(functions,'127.0.0.1',5001);
+ if(useEmulators&&(!['127.0.0.1','localhost'].includes(location.hostname)||firebaseConfig.projectId!=='demo-rocketfix-360'))throw Error('Staging app requires local demo emulators');
+ if(!useEmulators&&!['web.app','firebaseapp.com'].some(domain=>location.hostname===firebaseConfig.projectId+'.'+domain))throw Error('Staging hosting target mismatch');
+ const app=initializeApp(firebaseConfig);auth=getAuth(app);if(useEmulators)connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});functions=getFunctions(app,functionsRegion);if(useEmulators)connectFunctionsEmulator(functions,'127.0.0.1',5001);
  onAuthStateChanged(auth,async user=>{
   if(!user){profile=null;orders=[];staff=[];for(const id of ['reportResult','staffList','notificationResult'])$(id).textContent='';renderLists();resetFormSilent();$('workspace').hidden=true;$('login').hidden=false;return;}
   try{const result=await call('myAccess');if(!result.role)throw Error('Account is not yet authorized. Create staff/'+user.uid+' with role and active:true.');profile=result;$('profile').textContent=result.name+' · '+result.role.toUpperCase();$('login').hidden=true;$('workspace').hidden=false;

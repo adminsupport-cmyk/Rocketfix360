@@ -7,3 +7,5 @@ public/app.bundle.js
 public/app.bundle.js.map
 functions/.secret.local
 functions/.env*
+staging/project.json
+node_modules
