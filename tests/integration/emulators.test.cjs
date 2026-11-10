@@ -142,18 +142,20 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  const event=(await db.collection('integrationOutbox').limit(1).get()).docs[0];
  await require('../../functions/sheets-mirror').processMirror(db,event.ref,{upsert:async()=>assert.fail('No external test workbook authorized')});assert.equal((await event.ref.get()).data().status,'NOT_REQUESTED');
  await assert.rejects(call('retrySheetsMirror',{eventId:event.id}),/confirmed non-write/);
+ const lateOnly=await call('salesReport',{from:'2026-11-01',to:'2026-11-30',lateOnly:true});assert.ok(Array.isArray(lateOnly.lateLetters));assert.equal(lateOnly.orders,undefined);
  const dash=await call('dashboard');assert.ok(dash.pendingEditing>=0&&dash.pendingFrames>=0);assert.equal(dash.salesToday,dash.editingToday+dash.framingToday);
  });
  await t.test('manual REMIT callables reject non-admin roles and emulator never contacts Sheets',async()=>{
- const key=(await db.doc('orders/'+base.posId).get()).data().items.find(i=>i.kind==='editing').itemKey;
- for(const role of ['sales','editor','production','encoder'])for(const name of ['previewRemitMirror','syncRemitMirror','reconcileRemitMirror','remitMirrorStatuses'])await assert.rejects(call(name,{posId:base.posId,itemKey:key,posIds:[base.posId]},role),{code:'PERMISSION_DENIED'});
- const status=await call('remitMirrorStatuses',{posIds:[base.posId]});assert.ok(Array.isArray(status.records));
- await assert.rejects(call('previewRemitMirror',{posId:base.posId,itemKey:key}),/REMIT_EMULATOR_EXTERNAL_ACCESS_DISABLED/);
- const {createManualRemit}=require('../../functions/manual-remit');const before=(await db.doc('orders/'+base.posId).get()).data(),notices=(await db.collection('notificationOutbox').where('posId','==',base.posId).get()).size;
+ const testPos='77779999',source=(await db.doc('orders/'+base.posId).get()).data(),fixture={...source,posId:testPos,first:'TEST',last:'REMIT Fixture',email:'N/A',items:source.items.map(i=>{const id=i.kind==='editing'?'RF77779A':'GH6I7';return {...i,existingId:id,itemKey:testPos+'|'+i.kind+'|'+id};})};
+ await db.doc('orders/'+testPos).set(fixture);const key=fixture.items.find(i=>i.kind==='editing').itemKey;
+ for(const role of ['sales','editor','production','encoder'])for(const name of ['previewRemitMirror','syncRemitMirror','reconcileRemitMirror','remitMirrorStatuses'])await assert.rejects(call(name,{posId:testPos,itemKey:key,posIds:[testPos]},role),{code:'PERMISSION_DENIED'});
+ const status=await call('remitMirrorStatuses',{posIds:[testPos]});assert.ok(Array.isArray(status.records));
+ await assert.rejects(call('previewRemitMirror',{posId:testPos,itemKey:key}),/REMIT_EMULATOR_EXTERNAL_ACCESS_DISABLED/);
+ const {createManualRemit}=require('../../functions/manual-remit');const before=(await db.doc('orders/'+testPos).get()).data(),notices=(await db.collection('notificationOutbox').where('posId','==',testPos).get()).size;
  let writes=0,written=false;const api=createManualRemit(db,{transport:{inspect:async()=>({row:6,action:written?'UPDATE':'CREATE',matches:written,spreadsheetId:require('../../functions/remit-config.json').spreadsheetId,sheetId:1129443859}),write:async()=>{writes++;written=true;return {row:6};}}}),actor={role:'owner',uid:'emulator-owner'};
- const preview=await api.preview({posId:base.posId,itemKey:key},actor),args={posId:base.posId,itemKey:key,expectedVersion:before.version,confirmationToken:preview.confirmationToken};
+ const preview=await api.preview({posId:testPos,itemKey:key},actor),args={posId:testPos,itemKey:key,expectedVersion:before.version,confirmationToken:preview.confirmationToken};
  const outcomes=await Promise.allSettled([api.sync(args,actor),api.sync(args,actor)]);assert.ok(outcomes.some(x=>x.status==='fulfilled'&&x.value.status==='MIRRORED'));assert.equal(writes,1);assert.equal((await api.sync(args,actor)).replayed,true);assert.equal(writes,1);
- assert.deepEqual((await db.doc('orders/'+base.posId).get()).data(),before);assert.equal((await db.collection('notificationOutbox').where('posId','==',base.posId).get()).size,notices);
+ assert.deepEqual((await db.doc('orders/'+testPos).get()).data(),before);assert.equal((await db.collection('notificationOutbox').where('posId','==',testPos).get()).size,notices);
  });
  await t.test('hosting serves compiled staging application',async()=>{
  const r=await fetch('http://127.0.0.1:5050');assert.ok(r.ok);assert.match(await r.text(),/app.bundle.js/);const js=await fetch('http://127.0.0.1:5050/app.bundle.js');assert.ok(js.ok);assert.match(await js.text(),/connectAuthEmulator/);

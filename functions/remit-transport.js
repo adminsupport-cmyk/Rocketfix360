@@ -1,5 +1,6 @@
 'use strict';
 const config=require('./remit-config.json');
+const {validateFixtureOrder}=require('./staging-orders');
 const {mirrorPlan,digest}=require('./sheets-mirror');
 const {column,overlaps}=require('./sheets-transport');
 const productionIds=Object.values(require('./mirror-destinations.json').eventualProductionDestinations).map(d=>d.spreadsheetId);
@@ -8,6 +9,7 @@ function assertConfig(cfg=config){
  return cfg;
 }
 function plan(order,itemKey){
+ validateFixtureOrder(order);
  if(order.stagingTest!==true||order.voidedAt)throw Error('Only saved non-void fictional staging orders may mirror to TEST REMIT');
  const p=mirrorPlan(order).find(x=>x.destination==='master'&&x.key===itemKey);if(!p)throw Error('Saved editing item not found');
  delete p.cells[27];delete p.formats[27];p.cells[7]=order.items.find(i=>i.itemKey===itemKey)?.fileUrl||'';p.cells[9]=order.items.find(i=>i.itemKey===itemKey)?.noteFileUrl||'';
@@ -66,7 +68,7 @@ function createRemitTransport({clientFactory,cfg=config}={}){
    // single atomic Sheets batch. No append, insert, sort or column changes.
    const checked=await this.inspect(p,row,row);if(checked.row!==row)throw Error('ROW_RESERVATION_CHANGED');
    const requests=Object.entries(p.cells).map(([raw,value])=>{const col=Number(raw),pattern=p.formats?.[col],cell={userEnteredValue:typeof value==='number'?{numberValue:value}:{stringValue:String(value??'')}};if(pattern)cell.userEnteredFormat={numberFormat:{type:pattern.includes('hh:')?'DATE_TIME':'DATE',pattern}};return {updateCells:{start:{sheetId:cfg.sheetId,rowIndex:row-1,columnIndex:col-1},rows:[{values:[cell]}],fields:'userEnteredValue'+(pattern?',userEnteredFormat.numberFormat':'')}};});
-   const api=await client();try{await api.request({url:base+':batchUpdate',method:'POST',data:{requests}});}catch(error){const status=Number(error.response?.status||error.code);if(status>=400&&status<500&&status!==408&&status!==429)throw Object.assign(Error('REMIT_WRITE_REJECTED'),{confirmedNoWrite:true});throw Object.assign(Error('REMIT_WRITE_OUTCOME_UNCERTAIN'),{uncertain:true});}
+   const api=await client();try{await api.request({url:base+':batchUpdate',method:'POST',timeout:20000,data:{requests}});}catch(error){const status=Number(error.response?.status||error.code);if(status>=400&&status<500&&status!==408&&status!==429)throw Object.assign(Error('REMIT_WRITE_REJECTED'),{confirmedNoWrite:true});throw Object.assign(Error('REMIT_WRITE_OUTCOME_UNCERTAIN'),{uncertain:true});}
    let verified;try{verified=await this.inspect(p,row,row);}catch{throw Object.assign(Error('REMIT_VERIFICATION_UNCERTAIN'),{uncertain:true});}
    if(!verified.matches)throw Object.assign(Error('REMIT_VERIFICATION_MISMATCH'),{uncertain:true});return verified;
   }

@@ -50,7 +50,7 @@ const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/h
  // Confirm existing edit uses version, same POS and original field groups.
  await page.locator('[data-tab="history"]').click();await page.locator('#historyRows tr').filter({hasText:saved[0]}).getByRole('button',{name:'Edit transaction',exact:true}).click();
  assert.equal(await page.locator('#posId').textContent(),saved[0]);assert.equal(await page.locator('#phone').inputValue(),'09123456789');
- await page.locator('#remarks').fill('Edited sample receipt');await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='TEST ORDER SAVED ✓');await page.locator('.rf-submit-close').click();
+ if(!await page.locator('#remarks').isVisible()&&await page.getByText('Proof and transaction notes · optional',{exact:true}).count())await page.getByText('Proof and transaction notes · optional',{exact:true}).click();await page.locator('#remarks').fill('Edited sample receipt');await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='TEST ORDER SAVED ✓');await page.locator('.rf-submit-close').click();
  await page.locator('[data-tab="dashboard"]').click();await page.locator('[data-open="daily"]').click();assert.match(await page.locator('#statReceived').textContent(),/₱/);
  // Reference snapshots use neutral empty form values, never call a live backend.
  const ref=await context.newPage();await ref.goto('http://127.0.0.1:5051');
@@ -64,13 +64,13 @@ const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/h
   });
   await ref.screenshot({path:path.join(out,label+'-original.png'),fullPage:true});await page.screenshot({path:path.join(out,label+'-firebase.png'),fullPage:true});
   const metrics=async p=>p.evaluate(()=>({background:getComputedStyle(document.body).backgroundColor,panels:[...document.querySelectorAll('#new .panel')].map(x=>{const r=x.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}),fields:[...document.querySelectorAll('#new input,#new select,#new textarea')].map(x=>x.id||x.dataset.name)}));
-  const before=await metrics(ref),after=await metrics(page);assert.equal(after.background,'rgb(9, 12, 16)');assert.deepEqual(after.fields.filter(field=>field!=='fixtureMode'),before.fields);assert.ok(after.fields.includes('fixtureMode'),'Staging adds the explicit fictional-order acknowledgement');assert.ok(after.panels.every(panel=>panel.x>=0&&panel.width<=width),'Modern POS panels fit the viewport');
+  const before=await metrics(ref),after=await metrics(page);assert.equal(after.background,'rgb(16, 20, 20)');assert.deepEqual(after.fields.filter(field=>field!=='fixtureMode').sort(),[...before.fields].sort());assert.ok(after.fields.includes('fixtureMode'),'Staging adds the explicit fictional-order acknowledgement');assert.ok(after.panels.every(panel=>panel.x>=0&&panel.width<=width),'Modern POS panels fit the viewport');
   for(const target of [ref,page])await target.evaluate(()=>{
    addService('frame');const id=services.find(x=>x.kind==='frame').uid;services.find(x=>x.kind==='frame').existingId='AB1C2';renderServices();rfAddonToggle(id);
    document.querySelector('[data-name="addOnType"]').value='Personalized Letter';rfAddonChanged(document.querySelector('[data-name="addOnType"]'));
   });
   await ref.screenshot({path:path.join(out,label+'-frame-original.png'),fullPage:true});await page.screenshot({path:path.join(out,label+'-frame-firebase.png'),fullPage:true});
-  const frameBefore=await metrics(ref),frameAfter=await metrics(page);assert.deepEqual(frameAfter.fields.filter(field=>field!=='fixtureMode'),frameBefore.fields);assert.ok(frameAfter.panels.every(panel=>panel.x>=0&&panel.width<=width),'Modern frame panels fit the viewport');
+  const frameBefore=await metrics(ref),frameAfter=await metrics(page);assert.deepEqual(frameAfter.fields.filter(field=>field!=='fixtureMode').sort(),[...frameBefore.fields].sort());assert.ok(frameAfter.panels.every(panel=>panel.x>=0&&panel.width<=width),'Modern frame panels fit the viewport');
   await ref.evaluate(()=>resetForm());
  }
  assert.deepEqual(errors,[]);console.log('PASS: original Admin POS Owner login; editing/frame/combined sample receipts; versioned edit, history, receipt modal and daily report; desktop/iPad field completeness, responsive panel bounds and dark colors. Screenshots: '+out);

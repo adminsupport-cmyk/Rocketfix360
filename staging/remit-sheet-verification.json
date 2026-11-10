@@ -1,0 +1,60 @@
+{
+  "testSpreadsheetId": "1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc",
+  "sheetId": 1129443859,
+  "testPosId": "83946792",
+  "firstCreate": {
+    "editingId": "RF31599A",
+    "row": 6,
+    "version": 3
+  },
+  "repeat": {
+    "matchingRows": 1,
+    "unchangedAttemptCount": 1
+  },
+  "editAndResync": {
+    "editingId": "RF31599A",
+    "row": 6,
+    "version": 4,
+    "note": "FICTIONAL TEST \u2014 edited note for same-row REMIT resynchronization."
+  },
+  "multipleItem": {
+    "version": 5,
+    "rows": [
+      {
+        "row": 6,
+        "editingId": "RF31599A",
+        "paid": 100,
+        "tip": 10
+      },
+      {
+        "row": 7,
+        "editingId": "RF55058A",
+        "paid": 200,
+        "tip": 0
+      }
+    ],
+    "received": 320,
+    "due": 310,
+    "excess": 10
+  },
+  "finalMatchingRows": {
+    "markdown": "| Row | Column P | Column Q | Column R |\n| --- | --- | --- | --- |\n| 6 | 83946792 | RF31599A | 83946792\\|editing\\|RF31599A |\n| 7 | 83946792 | RF55058A | 83946792\\|editing\\|RF55058A |",
+    "scanned_range": "P6:R10628",
+    "scanned_row_count": 10623,
+    "scanned_column_count": 3,
+    "matched_row_count": 2,
+    "returned_matching_row_count": 2,
+    "truncated": false,
+    "truncated_rows": false,
+    "truncated_columns": false,
+    "truncated_row_count": 0,
+    "truncated_column_count": 0
+  },
+  "summaryAndDependentFormulasPreserved": true,
+  "typedDatesAndMoneyVerified": true,
+  "mainAndNoteFileLinksVerified": true,
+  "headerAndValidationsVerified": true,
+  "serviceAccountWriteVerified": true,
+  "productionWritesEnabled": false,
+  "nativeGoogleSheetsVisualReview": true
+}

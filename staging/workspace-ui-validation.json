@@ -1,0 +1,25 @@
+{
+  "widths": [
+    375,
+    430,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "viewportChecks": 70,
+  "pageOverflows": 0,
+  "runtimeErrors": [],
+  "beforeBundleBytes": 346710,
+  "afterBundleBytes": 259547,
+  "bundleReductionPercent": 25.1,
+  "unitTests": 66,
+  "emulatorTestRecords": 22,
+  "browserSuites": [
+    "Firebase auth",
+    "Original editing/frame/combined remittances and lost response",
+    "Editable databases and optimistic locking",
+    "Workspace responsive layout, fields, keyboard, dialogs and settings cancel"
+  ],
+  "artifacts": ".runtime/workspace/{before,after}"
+}

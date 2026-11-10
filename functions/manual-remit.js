@@ -8,13 +8,16 @@ function createManualRemit(db,{transport=createRemitTransport(),cfg=config}={}){
  const actorCheck=actor=>{if(!['owner','admin'].includes(actor?.role))throw Error('Only Owner or Admin may mirror to REMIT');assertConfig(cfg);};
  const refs=(posId,itemKey,version)=>{if(!/^\d{8}$/.test(String(posId))||typeof itemKey!=='string'||itemKey.length>100)throw Error('Invalid editing order identifiers');const key=digest([cfg.spreadsheetId,cfg.sheetId,itemKey]);return {order:db.doc('orders/'+posId),ledger:db.doc('remitSyncLedger/'+key),request:db.doc('remitSyncRequests/'+key+'_'+version),counter:db.doc('remitSyncCounters/'+digest([cfg.spreadsheetId,cfg.sheetId]))};};
  const result=l=>({posId:l.posId,itemKey:l.itemKey,editingId:l.editingId,status:l.status,row:l.row,spreadsheetId:cfg.spreadsheetId,sheetId:cfg.sheetId,tab:cfg.tab,lastSyncedVersion:l.lastSyncedVersion||0,lastSuccessfulSyncAt:l.lastSuccessfulSyncAt||null,lastError:l.lastError||null,attempts:l.attempts||0});
- async function finish(refs,ledger,request,state){const b=db.batch();b.update(refs.ledger,state);b.update(request,state);b.create(db.doc('remitSyncAudit/'+randomUUID()),{action:'RECONCILE',posId:ledger.posId,itemKey:ledger.itemKey,actor:state.reconciledBy||null,priorState:ledger.state,nextState:state.state,at:now()});await b.commit();return result({...ledger,...state});}
+ async function finish(refs,ledger,request,state){
+  await db.runTransaction(async t=>{const current=(await t.get(refs.ledger)).data();if(!current||current.requestPath!==ledger.requestPath||current.startedAt!==ledger.startedAt||current.version!==ledger.version||!['WRITING','REVIEW'].includes(current.state))throw Error('REMIT_RECONCILIATION_STATE_CHANGED');t.update(refs.ledger,state);t.update(request,state);t.create(db.doc('remitSyncAudit/'+randomUUID()),{action:'RECONCILE',posId:ledger.posId,itemKey:ledger.itemKey,actor:state.reconciledBy||null,priorState:ledger.state,nextState:state.state,at:now()});});return result({...ledger,...state});
+ }
  return {
   async preview({posId,itemKey},actor){
    actorCheck(actor);const r=refs(posId,itemKey,0),[o,l,c]=await Promise.all([r.order.get(),r.ledger.get(),r.counter.get()]);if(!o.exists)throw Error('Saved Firebase order not found');const order=o.data(),p=plan(order,itemKey),prior=l.data();
    if(prior&&['WRITING','REVIEW'].includes(prior.state))return {...result(prior),status:'REVIEW REQUIRED',needsReconciliation:true};
-   let inspected;try{inspected=await transport.inspect(p,c.data()?.nextRow||cfg.firstRow,prior?.row);}catch(e){throw Error(safeCode(e));}
+   let inspected;try{inspected=await transport.inspect(p,c.data()?.nextRow||cfg.firstRow,prior?.row);}catch(e){const code=safeCode(e);await db.runTransaction(async t=>{const current=(await t.get(r.ledger)).data();if(!current||!['WRITING','REVIEW'].includes(current.state))t.set(r.ledger,{...(current||{}),posId,itemKey,editingId:p.identity,spreadsheetId:cfg.spreadsheetId,sheetId:cfg.sheetId,tab:cfg.tab,row:current?.row||null,state:'FAILED',status:'FAILED',lastSyncedVersion:current?.lastSyncedVersion||0,lastSuccessfulSyncAt:current?.lastSuccessfulSyncAt||null,lastError:code,version:order.version,attempts:current?.attempts||0,updatedAt:now()});t.create(db.doc('remitSyncAudit/'+randomUUID()),{action:'PREVIEW_FAILURE',posId,itemKey,actor:actor.uid,errorCode:code,at:now()});});throw Error(code);}
    if(prior?.lastSyncedVersion===order.version&&!inspected.matches)throw Error('REMIT_EXTERNAL_CHANGE_REQUIRES_REVIEW');
+   if(prior?.state==='FAILED'&&prior.lastSyncedVersion===order.version&&inspected.matches){await db.runTransaction(async t=>{const current=(await t.get(r.ledger)).data();if(current?.state==='FAILED'&&current.lastSyncedVersion===order.version)t.update(r.ledger,{state:'SYNCED',status:'MIRRORED',lastError:null,updatedAt:now()});});prior.status='MIRRORED';}
    const token=randomUUID(),previewRef=db.doc('remitSyncPreviews/'+token),preview={uid:actor.uid,posId,itemKey,version:order.version,planDigest:digest(p),configDigest:digest(cfg),row:inspected.row,action:inspected.action,createdAt:now(),expiresAt:new Date(Date.now()+300000).toISOString(),used:false};
    await db.runTransaction(async t=>{t.create(previewRef,preview);});
    return {...inspected,posId,itemKey,editingId:p.identity,version:order.version,status:prior?.status||'NOT MIRRORED',alreadyMirrored:inspected.matches&&prior?.lastSyncedVersion===order.version,confirmationToken:token,destinationLabel:'ROCKETFIX360 - MASTER TEST / REMIT',testOnly:true};
@@ -31,9 +34,9 @@ function createManualRemit(db,{transport=createRemitTransport(),cfg=config}={}){
     const p=plan(o,itemKey);if(digest(p)!==preview.planDigest||digest(cfg)!==preview.configDigest)throw Error('Mirror plan changed; preview again');
     if(prior&&['WRITING','REVIEW'].includes(prior.state))throw Error('REMIT_RECONCILIATION_REQUIRED');
     if((previous?.attempts||0)>=3)throw Error('Manual mirror retry limit reached');
-    if(!prior&&preview.action==='CREATE'&&(cs.data()?.nextRow||cfg.firstRow)>preview.row)throw Error('Row reservation changed; preview again');
+    if(!prior?.row&&preview.action==='CREATE'&&(cs.data()?.nextRow||cfg.firstRow)>preview.row)throw Error('Row reservation changed; preview again');
     const attempts=(previous?.attempts||0)+1,startedAt=now(),ledger={posId,itemKey,editingId:p.identity,spreadsheetId:cfg.spreadsheetId,sheetId:cfg.sheetId,tab:cfg.tab,row:prior?.row||preview.row,state:'WRITING',status:'MIRRORING',lastSyncedVersion:prior?.lastSyncedVersion||0,lastSuccessfulSyncAt:prior?.lastSuccessfulSyncAt||null,lastError:null,attempts,version:expectedVersion,desiredPlan:p,previousPlan:prior?.syncedPlan||null,requestPath:r.request.path,actor:actor.uid,startedAt,updatedAt:startedAt};
-    if(!prior&&preview.action==='CREATE')t.set(r.counter,{nextRow:preview.row+1});
+    if(!prior?.row&&preview.action==='CREATE')t.set(r.counter,{nextRow:preview.row+1});
     t.set(r.ledger,ledger);t.set(r.request,{...ledger,confirmationToken});t.update(previewRef,{used:true});
     t.create(db.doc('remitSyncAttempts/'+digest([r.request.path,attempts])),{posId,itemKey,version:expectedVersion,attempt:attempts,state:'WRITING',actor:actor.uid,at:startedAt});
     return {r,p,ledger,attemptRef:db.doc('remitSyncAttempts/'+digest([r.request.path,attempts]))};
@@ -52,11 +55,11 @@ function createManualRemit(db,{transport=createRemitTransport(),cfg=config}={}){
   },
   async reconcile({posId,itemKey},actor){
    actorCheck(actor);const r=refs(posId,itemKey,0),snap=await r.ledger.get(),l=snap.data();if(!l||!['WRITING','REVIEW'].includes(l.state))throw Error('Only uncertain mirror outcomes need reconciliation');
+   if(l.state==='WRITING'&&Date.parse(l.startedAt)+120000>Date.now())throw Error('REMIT_WRITE_STILL_IN_PROGRESS');
    let inspected;try{inspected=await transport.inspect(l.desiredPlan,l.row,l.row);}catch(e){throw Error(safeCode(e));}
    if(inspected.matches)return finish(r,l,db.doc(l.requestPath),{state:'SYNCED',status:'MIRRORED',lastSyncedVersion:l.version,lastSuccessfulSyncAt:now(),lastError:null,syncedPlan:l.desiredPlan,reconciledBy:actor.uid,updatedAt:now()});
-   let untouched=inspected.action==='CREATE';
-   if(!untouched&&l.previousPlan){try{untouched=(await transport.inspect(l.previousPlan,l.row,l.row)).matches;}catch{}}
-   if(untouched)return finish(r,l,db.doc(l.requestPath),{state:'FAILED',status:'FAILED',lastError:'REMIT_CONFIRMED_UNCHANGED_AFTER_RECONCILIATION',reconciledBy:actor.uid,updatedAt:now()});
+   // An empty/old-looking row does not prove that a timed-out write cannot
+   // still commit. Only an exact positive match may resolve uncertainty.
    return {...result(l),status:'REVIEW REQUIRED'};
   },
   async statuses({posIds},actor){actorCheck(actor);if(!Array.isArray(posIds)||posIds.length>30||posIds.some(id=>!/^\d{8}$/.test(String(id))))throw Error('At most 30 saved POS IDs required');if(!posIds.length)return {records:[]};const docs=await db.collection('remitSyncLedger').where('posId','in',[...new Set(posIds)]).get();return {records:docs.docs.map(d=>result(d.data()))};}

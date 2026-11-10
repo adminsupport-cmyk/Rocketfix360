@@ -1,3 +1,4 @@
+import {initWorkspace} from './workspace.js';
 import {initializeApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
@@ -12,11 +13,17 @@ if(useEmulators){
 let profile=null,pricingVersion=0;
 const requests=new WeakMap(),pending=new Map();
 const invoke=async(name,data={})=>(await httpsCallable(functions,name,{timeout:70000})(data)).data;
+const historyCache=new Map();let historyCursor=null,historyInitialized=false;
+const cachedHistory=()=>[...historyCache.values()].filter(o=>!o.voidedAt).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(adapter.fromFirebase);
 async function history(){
- const all=[];let cursor=null;
- do{const page=await invoke('listOrders',{limit:150,cursor});all.push(...page.orders.filter(o=>!o.voidedAt).map(adapter.fromFirebase));cursor=page.nextCursor||null;}while(cursor);
- return all;
+ const result=await invoke('listOrders',{limit:150});for(const o of result.orders)historyCache.set(o.posId,o);if(!historyInitialized){historyCursor=result.nextCursor;historyInitialized=true;}
+ if(document.querySelector('.tab.active')?.id==='daily'){
+  window.dispatchEvent(new Event('rf:report-loading'));
+  try{const selected=document.getElementById('reportDate').value,week=window.rfWeeklyMonday(selected),from=window.rfWeeklyAdd(week,-7),to=window.rfWeeklyAdd(week,6),report=await invoke('salesReport',{from,to});for(const [id,o] of historyCache)if(o.paymentDate>=from&&o.paymentDate<=to)historyCache.delete(id);for(const o of report.orders)historyCache.set(o.posId,o);window.dispatchEvent(new Event('rf:report-loaded'));}catch(error){window.dispatchEvent(new Event('rf:report-failed'));throw error;}
+ }
+ window.dispatchEvent(new Event('rf:history-state'));return cachedHistory();
 }
+async function loadMoreHistory(){if(!historyCursor)return;const page=await invoke('listOrders',{limit:150,cursor:historyCursor});for(const o of page.orders)historyCache.set(o.posId,o);historyCursor=page.nextCursor;window.updateHistoryRecords(cachedHistory());window.dispatchEvent(new Event('rf:history-state'));}
 const unsupported=label=>{throw Error(label+' is unavailable until the original source and staging configuration are verified. No payment was recorded.');};
 async function dispatch(method,args){
  if(method!=='execute')throw Error('Unsupported POS action');
@@ -45,9 +52,11 @@ async function dispatch(method,args){
   return window.firebasePOS.fixtureMode?cfg:{rates:{},custom:{}};
  }
  case 'framePricingSave':{
-  if(!['owner','admin'].includes(profile.role))throw Error('Only an Owner or Admin can change pricing');
-  if(!useEmulators)return unsupported('Unverified pricing changes');
-  const cfg=await invoke('savePricing',{config:{...values[0],fixtureOnly:true},expectedVersion:pricingVersion});pricingVersion=cfg.version;return cfg;
+  try{
+   if(!['owner','admin'].includes(profile.role))throw Error('Only an Owner or Admin can change pricing');
+   if(!useEmulators)return unsupported('Unverified pricing changes');
+   const cfg=await invoke('savePricing',{config:{...values[0],fixtureOnly:true},expectedVersion:pricingVersion});pricingVersion=cfg.version;window.dispatchEvent(new Event('rf:pricing-saved'));return cfg;
+  }catch(error){window.dispatchEvent(new Event('rf:pricing-failed'));throw error;}
  }
  case 'lateAddonLookup':{
   const {order}=await invoke('getOrder',{frameId:values[0]});
@@ -60,14 +69,15 @@ async function dispatch(method,args){
   const result=await invoke('saveLateLetter',values[0]);return {...result,frameVerified:true,viberStatus:'DISABLED',viberText:''};
  }
  case 'lateAddonSales':{
-  const report=await invoke('salesReport',{from:'1900-01-01',to:'2100-12-31'});
+  const report=await invoke('salesReport',{from:'1900-01-01',to:'2100-12-31',lateOnly:true});
   return report.lateLetters.map(x=>({id:x.id,date:x.paymentDate,amount:x.amount,customer:x.customer||'',email:x.email||'',staff:x.recordedBy||'',method:x.method}));
  }
  default:throw Error('Unsupported POS action: '+action);
  }
 }
+initWorkspace();
 window.posAPI={run:adapter.runner(dispatch)};
-window.firebasePOS={isDemo:useEmulators,get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
+window.firebasePOS={isDemo:useEmulators,loadMoreHistory,get historyState(){return {hasMore:!!historyCursor,loaded:historyCache.size};},get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
 bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
  save:record=>dispatch('execute',['save',[record,null]]),status:posId=>dispatch('execute',['status',[posId]]),
  acceptReceipt:record=>window.acceptCommittedReceipt(record),editPayment:order=>window.loadPaymentCorrection(adapter.fromFirebase(order)),
@@ -77,7 +87,7 @@ bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
 const login=document.getElementById('firebaseLogin'),form=document.getElementById('firebaseLoginForm'),button=document.getElementById('loginSubmit'),message=document.getElementById('loginError'),status=document.getElementById('loginStatus');
 let accessGeneration=0;
 function showLogin(error=''){
- profile=null;window.setPOSAccess(null);login.hidden=false;button.disabled=false;
+ profile=null;historyCache.clear();historyCursor=null;historyInitialized=false;window.setPOSAccess(null);login.hidden=false;button.disabled=false;
  message.textContent=error;status.textContent='';
 }
 form.addEventListener('submit',async event=>{

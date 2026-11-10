@@ -5,13 +5,14 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 function generate(){
  const version=require('node:crypto').createHash('sha256');
- for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','public/modern.js'])version.update(fs.readFileSync(path.join(root,file)));
+ for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','tools/templates/settings.html','public/workspace.js','public/modern.js'])version.update(fs.readFileSync(path.join(root,file)));
  const assetVersion=version.digest('hex').slice(0,16);
  let html=fs.readFileSync(path.join(root,'reference/Original_Index.html'),'utf8');
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
  if(start<0||end<start)throw Error('Original authentication boundary changed');
  const auth=`let posAuthorized=false;
 function loadPaymentCorrection(record){const fixture=document.getElementById('fixtureMode');if(fixture)fixture.checked=record.stagingTest===true;const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);editRecord(record.posId);}
+function updateHistoryRecords(records){tx=records;renderReports();}
 function acceptCommittedReceipt(record){const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);resetForm();renderReports();rfRefreshLive(true);}
 function setPOSAccess(profile){
  posAuthorized=!!profile;
@@ -73,8 +74,11 @@ function setPOSAccess(profile){
   .replaceAll('rfDeviceUser','employeeBadge').replaceAll('rfDeviceInit();','');
  html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
  html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/modern.css'),'utf8')+'</style></head>');
- html=html.replace(/<nav>[\s\S]*?<\/nav>/,'<nav><button class="active" data-tab="dashboard">Dashboard</button><button data-tab="new">Admin POS</button><button data-tab="editingDatabase">Editing Database</button><button data-tab="frameDatabase">Frame Database</button><button data-tab="history">Remittances</button><button data-tab="settings">Settings</button></nav>');
- html=html.replace('<section class="tab active" id="new">','<section class="tab" id="new"><div class="panel"><label><input type="checkbox" id="fixtureMode" onchange="rfLoadFramePricing();compute()"> FICTIONAL STAGING TEST ONLY — no real payment; unverified fixture prices</label><p>Use a TEST or SAMPLE customer name and N/A or .invalid email. Sheets mirroring is disabled.</p></div>');
+ html=html.replace(/<section class="tab" id="settings">[\s\S]*?<\/section>/,fs.readFileSync(path.join(root,'tools/templates/settings.html'),'utf8'));
+ html=html.replace(/<nav>[\s\S]*?<\/nav>/,'<nav><button class="active" data-tab="dashboard">Dashboard</button><button data-tab="new">Admin POS</button><button data-tab="editingDatabase">Editing Database</button><button data-tab="frameDatabase">Frame Database</button><button data-tab="history">Remittances</button><button data-tab="daily">Reports</button><button data-tab="settings">Settings</button></nav>');
+ html=html.replace('<span id="employeeBadge" hidden>Staff sign-in required</span>','<button type="button" id="employeeBadge" class="btn ghost" hidden>Staff sign-in required</button>');
+ html=html.replace('rfRenderPricingSettings();rfUpdateShipping();}',"rfRenderPricingSettings();rfUpdateShipping();window.dispatchEvent(new Event('rf:pricing-loaded'));}");
+ html=html.replace('<section class="tab active" id="new">','<section class="tab" id="new"><div class="panel"><label><input type="checkbox" id="fixtureMode" onchange="rfLoadFramePricing();compute()"> FICTIONAL STAGING TEST ONLY — no real payment; unverified fixture prices</label><p>Use a TEST or SAMPLE customer name and N/A or .invalid email. Production Sheets mirroring is disabled.</p></div>');
  html=html.replace('</main>',fs.readFileSync(path.join(root,'tools/templates/modern.html'),'utf8')+'</main>');
  html=html.replace(/<div id="rfQueueDock"[\s\S]*?<div id="rfSubmitOverlay"/,'<div id="rfSubmitOverlay"');
  html=html.replaceAll('Save Remittance','Submit Remittance').replace('Your remittance will upload while you prepare the next order.','Payment confirmation waits only for the Firebase commit.');
@@ -82,6 +86,9 @@ function setPOSAccess(profile){
  const queueEnd=html.indexOf('function resetForm()',queueStart);
  if(queueStart<0||queueEnd<0)throw Error('Remittance submit boundary changed');
  html=html.slice(0,queueStart)+" return window.modernPOS.submit(record,file);\n}\n"+html.slice(queueEnd);
+ html=html.replace("$('historyRows').innerHTML=liveMatches.concat(legacyMatches,lateMatches).join('')", "const historyResults=liveMatches.concat(legacyMatches,lateMatches);window.workspaceHistoryPage=Math.min(window.workspaceHistoryPage||0,Math.max(0,Math.ceil(historyResults.length/25)-1));window.dispatchEvent(new CustomEvent('rf:page-rendered',{detail:{id:'historyRows',total:historyResults.length}}));$('historyRows').innerHTML=historyResults.slice(window.workspaceHistoryPage*25,window.workspaceHistoryPage*25+25).join('')");
+ html=html.replace("$('dailyRows').innerHTML=daily.map(dailyLive).concat(legacy.map(dailyOld),lateRows).join('')", "const dailyResults=daily.map(dailyLive).concat(legacy.map(dailyOld),lateRows);window.workspaceReportPage=Math.min(window.workspaceReportPage||0,Math.max(0,Math.ceil(dailyResults.length/25)-1));window.dispatchEvent(new CustomEvent('rf:page-rendered',{detail:{id:'dailyRows',total:dailyResults.length}}));$('dailyRows').innerHTML=dailyResults.slice(window.workspaceReportPage*25,window.workspaceReportPage*25+25).join('')");
+ html=html.replace('id="historySearch" oninput="renderReports()"','id="historySearch" oninput="clearTimeout(window.rfHistorySearchTimer);window.rfHistorySearchTimer=setTimeout(()=>{window.workspaceHistoryPage=0;renderReports()},180)"');
  // Late-letter submission uses the same direct Firebase result, never the old sheet queue.
  const lateStart=html.indexOf('function rfLateSave(){'),lateEnd=html.indexOf('function rfLateRepair(){',lateStart);
  html=html.slice(0,lateStart)+"function rfLateSave(){return window.modernPOS.submitLetter(rfLateOrder); }\n"+html.slice(lateEnd);

@@ -5,7 +5,7 @@ const {createManualRemit}=require('../functions/manual-remit');
 const {config,plan,createRemitTransport,assertConfig}=require('../functions/remit-transport');
 const {validate}=require('../functions/core');
 const actor={role:'owner',uid:'owner'};
-function order(){return {...validate({posId:'23456789',paymentDate:'2026-11-10',first:'TEST',last:'REMIT',email:'N/A',received:320,tip:10,tipRecipient:'Joyce',discount:20,items:[{kind:'editing',existingId:'RF23456A',amount:100,fileUrl:'https://example.invalid/main',noteFileUrl:'https://example.invalid/note'},{kind:'editing',existingId:'RF23456B',amount:200}]}),stagingTest:true,version:1,createdAt:'2026-11-10T00:00:00.000Z',updatedAt:'2026-11-10T00:00:00.000Z'};}
+function order(){return {...validate({posId:'23456789',paymentDate:'2026-11-10',first:'TEST',last:'REMIT',email:'N/A',received:320,tip:10,tipRecipient:'Joyce',discount:20,items:[{kind:'editing',existingId:'RF23456A',amount:100,fileUrl:'https://example.invalid/main',noteFileUrl:'https://example.invalid/note'},{kind:'editing',existingId:'RF23456B',amount:200}]}),stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1',version:1,createdAt:'2026-11-10T00:00:00.000Z',updatedAt:'2026-11-10T00:00:00.000Z'};}
 function fakeSheets(){
  const grid=new Map(),calls=[],row=n=>grid.get(n)||[],rules={3:['Fetched','Family','Solo','Couple','Manipulation','Restoration','Enhancement'],4:['NORMAL FILE','RUSH FILE','ADDITIONAL PAYMENT','REVISION PAYMENT','SELECT'],11:['Joyce','Renz','Select','Joy','Lerni']};
  let writeCount=0,uncertain=false,rejected=false;
@@ -60,4 +60,11 @@ test('unauthorized roles and stale or cross-user confirmations cannot issue writ
  const s=setup(),args={posId:s.o.posId,itemKey:s.o.items[0].itemKey};for(const role of ['sales','editor','encoder','production'])await assert.rejects(s.api.preview(args,{role,uid:role}),/Owner or Admin/);
  const p=await s.api.preview(args,actor),request={...args,expectedVersion:1,confirmationToken:p.confirmationToken};await assert.rejects(s.api.sync(request,{role:'admin',uid:'other'}),/confirmation/);
  s.db.put('orders/'+s.o.posId,{...s.o,version:2});await assert.rejects(s.api.sync(request,actor),/Order changed/);assert.equal(s.sheet.writes,0);
+});
+test('uncertain empty outcomes never become safe retries and active writes cannot be reclaimed',async()=>{
+ const db=memoryDb(),o=order();db.put('orders/'+o.posId,o);let calls=0;
+ const api=createManualRemit(db,{transport:{inspect:async()=>({row:6,action:'CREATE',matches:false}),write:async()=>{calls++;throw Object.assign(Error('lost response'),{uncertain:true});}}}),args={posId:o.posId,itemKey:o.items[0].itemKey};
+ const preview=await api.preview(args,actor);assert.equal((await api.sync({...args,expectedVersion:1,confirmationToken:preview.confirmationToken},actor)).status,'REVIEW REQUIRED');
+ assert.equal((await api.reconcile(args,actor)).status,'REVIEW REQUIRED');assert.equal((await api.preview(args,actor)).needsReconciliation,true);assert.equal(calls,1);
+ const [ledgerPath,l]=db.entries().find(([p])=>p.startsWith('remitSyncLedger/'));db.put(ledgerPath,{...l,state:'WRITING',startedAt:new Date().toISOString()});await assert.rejects(api.reconcile(args,actor),/STILL_IN_PROGRESS/);assert.equal(calls,1);
 });

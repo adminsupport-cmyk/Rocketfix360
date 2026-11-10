@@ -222,8 +222,9 @@ exports.earningsReport=call(readers,async ({from,to},actor)=>{
  const s=await db.collection('earnings').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
  const rows=s.docs.map(d=>d.data()).filter(e=>e.status==='ACTIVE');return {rows,total:Math.round(rows.reduce((a,e)=>a+e.amount,0)*100)/100};
 });
-exports.salesReport=call(writer,async ({from,to})=>{
+exports.salesReport=call(writer,async ({from,to,lateOnly=false})=>{
  date(from);date(to);if(from>to)throw Error('Invalid date range');
+ if(lateOnly===true){const late=await db.collection('lateLetters').where('paymentDate','>=',from).where('paymentDate','<=',to).get();return {lateLetters:late.docs.map(d=>d.data())};}
  const snaps=await db.collection('orders').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
  const orders=snaps.docs.map(s=>s.data()).filter(o=>!o.voidedAt&&o.status==='SYNCED');
  const late=await db.collection('lateLetters').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
@@ -275,9 +276,9 @@ exports.mirrorOutbox=onDocumentCreated({database:'rocketfix360database',document
  staging();if(event.data)await processMirror(db,event.data.ref,sheetsTransport);
 });
 exports.integrationStatus=call(['owner','admin'],async()=>{
- const [mirrors,notifications]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get()]);
+ const [mirrors,notifications,remit]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('remitSyncLedger').orderBy('updatedAt','desc').limit(100).get()]);
  const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
- return {sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
+ return {remit:remit.docs.map(d=>{const l=d.data();return {eventId:d.id,type:'REMIT',posId:l.posId,status:l.status,attempts:l.attempts||0,errorCode:l.lastError||'',row:l.row||null,version:l.lastSyncedVersion||0};}),sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),remitDestination:{label:'ROCKETFIX360 - MASTER TEST / REMIT',testOnly:true},sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
 });
 exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  if(!/^[0-9]{8}_SHEETS_[0-9]+$/.test(String(eventId)))throw Error('Invalid mirror event');
