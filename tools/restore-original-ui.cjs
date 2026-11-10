@@ -32,9 +32,13 @@ async function rfDeviceStartRequest(){
  catch(error){btn.disabled=false;rfDeviceShowMode('register');rfDeviceError(error.message);}
 }
 function rfStaffSignOut(){if(confirm('Sign out and change staff?'))window.firebasePOS.signOut();}
-function rfDeviceInit(){rfDeviceShowMode('loading','Starting staff session…','Connecting to Rocketfix POS…');}
+function rfDeviceInit(){rfDeviceShowMode('loading','Connecting securely…','Connecting to Rocketfix POS…');}
 `;
  html=html.slice(0,start)+auth+html.slice(end);
+ const gateStart=html.indexOf('<div id="rfDeviceGate">'),gateEnd=html.indexOf('<aside id="rfPosUpdateBanner"');
+ if(gateStart<0||gateEnd<gateStart)throw Error('Original login boundary changed');
+ html=html.slice(0,gateStart)+fs.readFileSync(path.join(root,'tools/templates/login.html'),'utf8')+html.slice(gateEnd);
+ html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/login.css'),'utf8')+'</style></head>');
  html=html.replace('Enter your staff name and the company PIN. You will remain signed in for up to 24 hours on this browser.','Enter your employee email and password.');
  html=html.replace('24-HOUR SESSION','EMPLOYEE ACCESS').replace('>Staff name</label>','>Employee email</label>').replace('maxlength="60" autocomplete="name" placeholder="e.g. Joyce Legaspi"','type="email" maxlength="200" autocomplete="username" placeholder="Employee email"');
  html=html.replace('>Company PIN</label>','>Password</label>').replace('inputmode="numeric" pattern="[0-9]*" minlength="8" maxlength="12" autocomplete="off" placeholder="8–12 digit PIN"','autocomplete="current-password" placeholder="Password"');

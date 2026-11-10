@@ -6,7 +6,7 @@ const sample=()=>({posId:'12345678',paymentDate:'2026-11-10',first:'N/A',email:'
 test('original CSS is retained verbatim and generated interface is reproducible',()=>{
  const source=fs.readFileSync('reference/Original_Index.html','utf8'),output=fs.readFileSync('public/index.html','utf8');
  assert.equal(output,require('../tools/restore-original-ui.cjs').generate());
- const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);assert.deepEqual(styles(output),styles(source));
+ const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")),originalStyles);
  for(const match of source.matchAll(/\bid="([^"]+)"/g))assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');
  for(const match of output.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
  assert.ok(!output.includes('script.google.com/macros'));assert.ok(!output.includes('UNVERIFIED_FIXTURE'));

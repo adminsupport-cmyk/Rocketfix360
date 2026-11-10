@@ -1,3 +1,9 @@
+# Fresh dark login — November 10, 2026
+
+Replaced the session-style gate with a fresh dark login card, Rocketfix green accents, employee email/password fields, and keyboard form submission. Removed session/PIN wording from the visible login. Firebase Authentication, employee role checks, and all financial/sending restrictions remain unchanged. Checks/build and all 42 unit tests pass. Browser checks at desktop 1440×1000 and mobile 390×844 pass, including authorized local Owner sign-in using Enter. Hosting-only staging update; no Functions, production or Sheets changes.
+
+---
+
 # Original Admin POS parity rebuild — November 10, 2026
 
 Branch: `feature/original-admin-pos-parity`, based on `staging/firebase-pos-fast-track` (`7e554b7`). Main and recovery references preserved. Original HTML/CSS now forms the Firebase interface; original reference files unchanged. Source mapping, immutable hashes and local dependency candidates are in [parity/SOURCE-MAP.md](parity/SOURCE-MAP.md).

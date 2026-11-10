@@ -297,12 +297,46 @@
 .rf-addon-pricetag{font-size:12px;color:#a9edc5;font-weight:750;margin-top:6px}
 .rf-addon-hint{font-size:11px;color:#b8c7be;line-height:1.4;margin-top:5px}
 @media(max-width:620px){.rf-addon-body{grid-template-columns:1fr}}
-</style><style> .rf-late-overlay{position:fixed;inset:0;z-index:13000;background:rgba(0,0,0,.84);display:flex;justify-content:center;align-items:center;padding:14px;overflow:auto}.rf-late-overlay[hidden],.rf-late-card [hidden]{display:none!important}.rf-late-card{background:#141c20;border:1px solid #365e4e;color:#e9f6ed;border-radius:18px;padding:22px;width:min(720px,100%);max-height:94vh;overflow:auto}.rf-late-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:8px}.rf-late-head h2{margin:5px 0 0;font-size:22px}.rf-late-card .hint{font-size:13px}@media(max-width:600px){.rf-late-head{align-items:center}.rf-late-card{padding:16px}}</style></head><body><div id="rfDeviceGate"><div class="rf-device-shell"><div class="rf-device-card">
-<div class="rf-simple-head"><span class="rf-simple-brand"><i class="rf-simple-dot" aria-hidden="true"></i>ROCKETFIX / POS</span><span class="rf-simple-meta">SECURE SIGN-IN</span></div>
-<div class="rf-simple-main"><div class="rf-simple-kicker">EMPLOYEE ACCESS</div><h2>Welcome to Rocketfix POS</h2><p class="rf-simple-intro">Enter your employee email and password.</p>
-<div id="rfDeviceLoading" role="status" aria-live="polite" hidden><div class="rf-simple-status"><span class="rf-simple-symbol" aria-hidden="true">&gt;_</span><div id="rfDeviceLoadingTitle">Starting staff session…</div></div><div id="rfDeviceLoadingDescription">Connecting to Rocketfix POS…</div><div class="rf-simple-bar" aria-hidden="true"><span></span></div><button type="button" id="rfDeviceLoadingRetry" hidden onclick="rfDeviceShowMode('register')">Try again</button></div>
-<div id="rfDeviceRegisterForm"><label for="rfDeviceNameInput">Employee email</label><input id="rfDeviceNameInput" type="email" maxlength="200" autocomplete="username" placeholder="Employee email" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('rfCompanyPinInput').focus();}"><label for="rfCompanyPinInput">Password</label><input id="rfCompanyPinInput" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter'){event.preventDefault();rfDeviceStartRequest();}"><p style="font-size:11px;color:#a2acb9;line-height:1.5;margin:10px 0 0">Use your authorized employee account.</p><button type="button" id="rfDeviceRequestButton" onclick="rfDeviceStartRequest()">Sign in securely</button></div>
-<p id="rfDeviceMsg" role="status"></p></div><div class="rf-simple-footer">ROCKETFIX ADMIN POS · STAFF SESSION</div></div></div></div><aside id="rfPosUpdateBanner" role="status" aria-live="polite" aria-label="New Rocketfix POS version available">
+</style><style> .rf-late-overlay{position:fixed;inset:0;z-index:13000;background:rgba(0,0,0,.84);display:flex;justify-content:center;align-items:center;padding:14px;overflow:auto}.rf-late-overlay[hidden],.rf-late-card [hidden]{display:none!important}.rf-late-card{background:#141c20;border:1px solid #365e4e;color:#e9f6ed;border-radius:18px;padding:22px;width:min(720px,100%);max-height:94vh;overflow:auto}.rf-late-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:8px}.rf-late-head h2{margin:5px 0 0;font-size:22px}.rf-late-card .hint{font-size:13px}@media(max-width:600px){.rf-late-head{align-items:center}.rf-late-card{padding:16px}}</style><style>/* Fresh login only; the original POS layout remains source-owned. */
+#rfDeviceGate{background:radial-gradient(ellipse at 50% 0%,#17382b66,transparent 58%),#080a0e;padding:28px;overflow:auto}
+#rfDeviceGate::before{display:none}
+.rf-login-card{width:min(440px,100%);margin:auto;background:#14181f;border:1px solid #303b36;border-radius:24px;padding:38px;box-shadow:0 28px 90px #0005}
+.rf-login-logo{display:block;width:170px;height:64px;object-fit:contain;object-position:left;margin-bottom:28px}
+.rf-login-heading>span{display:block;color:#8bdbbe;font-size:10px;font-weight:800;letter-spacing:.18em;margin-bottom:12px}
+.rf-login-heading h1{font-size:32px;letter-spacing:-1px;line-height:1.15;margin:0 0 10px;color:#f2f6fa}
+.rf-login-heading p{font-size:14px;color:#9da8b7;line-height:1.6;margin:0 0 30px}
+#rfDeviceRegisterForm{margin:0}
+.rf-login-card label{font-size:12px;font-weight:650;color:#bbc8c2;margin:0 0 9px}
+.rf-login-card input{height:50px;background:#0c1016;border:1px solid #3b434e;border-radius:11px;padding:12px 14px;margin-bottom:21px;color:#f2f6fa;transition:border-color .15s,box-shadow .15s}
+.rf-login-card input:focus{outline:none;border-color:#5cbf96;box-shadow:0 0 0 3px #5cbf961c}
+.rf-login-card button{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;height:50px;background:#23815b;color:#fff;border:1px solid #31986d;border-radius:11px;font-size:14px;font-weight:750;margin:5px 0 0}
+.rf-login-card button:hover{background:#2b966b}
+.rf-login-card button:focus-visible{outline:2px solid #8bdbbe;outline-offset:4px}
+.rf-login-card button:disabled{opacity:.6;cursor:wait}
+.rf-login-footer{display:flex;justify-content:center;gap:10px;color:#75867f;font-size:11px;border-top:1px solid #2a3330;margin-top:28px;padding-top:22px}
+.rf-login-footer span{color:#426351}
+#rfDeviceLoading{text-align:center;padding:10px 0 0;gap:12px}
+#rfDeviceLoading strong{font-size:15px;color:#e8edf3}
+#rfDeviceLoading p{font-size:12px;color:#9da8b7;margin:0;line-height:1.6}
+.rf-login-spinner{width:27px;height:27px;border:2px solid #294b3c;border-top-color:#8bdbbe;border-radius:50%;margin:0 auto 12px;animation:rfDeleteSpin .8s linear infinite}
+#rfDeviceMsg:empty{display:none}
+@media(max-width:520px){#rfDeviceGate{padding:18px}.rf-login-card{padding:30px 24px;border-radius:20px}.rf-login-heading h1{font-size:29px}}
+@media(prefers-reduced-motion:reduce){.rf-login-spinner{animation:none}}
+</style></head><body><div id="rfDeviceGate">
+ <section class="rf-login-card" aria-labelledby="rfLoginTitle">
+  <img class="rf-login-logo" src="https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png" alt="Rocketfix">
+  <div class="rf-login-heading"><span>ADMIN POS</span><h1 id="rfLoginTitle">Welcome back.</h1><p>Sign in to your Rocketfix360 account.</p></div>
+  <div id="rfDeviceLoading" role="status" aria-live="polite" hidden><div class="rf-login-spinner" aria-hidden="true"></div><strong id="rfDeviceLoadingTitle">Connecting securely…</strong><p id="rfDeviceLoadingDescription">Connecting to Rocketfix POS…</p><button type="button" id="rfDeviceLoadingRetry" hidden onclick="rfDeviceShowMode('register')">Try again</button></div>
+  <form id="rfDeviceRegisterForm" onsubmit="event.preventDefault();rfDeviceStartRequest()">
+   <label for="rfDeviceNameInput">Employee email</label><input id="rfDeviceNameInput" type="email" maxlength="200" autocomplete="username" placeholder="you@example.com" required>
+   <label for="rfCompanyPinInput">Password</label><input id="rfCompanyPinInput" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+   <button type="submit" id="rfDeviceRequestButton">Sign in <span aria-hidden="true">→</span></button>
+  </form>
+  <p id="rfDeviceMsg" role="alert"></p>
+  <div class="rf-login-footer">Rocketfix360 <span>•</span> Admin POS</div>
+ </section>
+</div>
+<aside id="rfPosUpdateBanner" role="status" aria-live="polite" aria-label="New Rocketfix POS version available">
 <div class="rf-up-topline"></div>
 <div class="rf-up-content">
 <div class="rf-up-kicker">ROCKETFIX / ADMIN POS</div>
@@ -392,7 +426,7 @@ async function rfDeviceStartRequest(){
  catch(error){btn.disabled=false;rfDeviceShowMode('register');rfDeviceError(error.message);}
 }
 function rfStaffSignOut(){if(confirm('Sign out and change staff?'))window.firebasePOS.signOut();}
-function rfDeviceInit(){rfDeviceShowMode('loading','Starting staff session…','Connecting to Rocketfix POS…');}
+function rfDeviceInit(){rfDeviceShowMode('loading','Connecting securely…','Connecting to Rocketfix POS…');}
 const ROCKETFIX_LOGO_URL = 'https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png';
 
 const $=id=>document.getElementById(id), key='rocketfix-pos-live-v9';

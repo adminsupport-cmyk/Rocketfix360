@@ -1,0 +1,14 @@
+<div id="rfDeviceGate">
+ <section class="rf-login-card" aria-labelledby="rfLoginTitle">
+  <img class="rf-login-logo" src="https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png" alt="Rocketfix">
+  <div class="rf-login-heading"><span>ADMIN POS</span><h1 id="rfLoginTitle">Welcome back.</h1><p>Sign in to your Rocketfix360 account.</p></div>
+  <div id="rfDeviceLoading" role="status" aria-live="polite" hidden><div class="rf-login-spinner" aria-hidden="true"></div><strong id="rfDeviceLoadingTitle">Connecting securely…</strong><p id="rfDeviceLoadingDescription">Connecting to Rocketfix POS…</p><button type="button" id="rfDeviceLoadingRetry" hidden onclick="rfDeviceShowMode('register')">Try again</button></div>
+  <form id="rfDeviceRegisterForm" onsubmit="event.preventDefault();rfDeviceStartRequest()">
+   <label for="rfDeviceNameInput">Employee email</label><input id="rfDeviceNameInput" type="email" maxlength="200" autocomplete="username" placeholder="you@example.com" required>
+   <label for="rfCompanyPinInput">Password</label><input id="rfCompanyPinInput" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+   <button type="submit" id="rfDeviceRequestButton">Sign in <span aria-hidden="true">→</span></button>
+  </form>
+  <p id="rfDeviceMsg" role="alert"></p>
+  <div class="rf-login-footer">Rocketfix360 <span>•</span> Admin POS</div>
+ </section>
+</div>
