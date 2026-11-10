@@ -4,7 +4,7 @@ const statuses={editing:['Not started','On going','Finalizing','Delivered'],fram
 const editingTypes=['Family','Solo','Enhancement','Manipulation','Couple','Fetched','Restoration','Graduation','Wedding'];
 const financial=role=>['owner','admin','sales'].includes(role),operational=role=>['owner','admin','encoder','editor','production'].includes(role);
 export function bindModernPOS(api){
- let orders=[],staff=[],selected=null,page={editing:0,frame:0},busy=false,submission=null,refreshing=null;
+ let orders=[],staff=[],selected=null,page={editing:0,frame:0},busy=false,submission=null,refreshing=null,remitRecords=new Map(),mirrorBusy=new Set();
  const feedback=(id,text,error=false)=>{const e=$(id);e.textContent=text;e.classList.toggle('error',error);};
  const call=api.call,profile=()=>api.profile();
  const options=(values,chosen)=>values.map(v=>`<option value="${esc(typeof v==='string'?v:v.value)}" ${chosen===(typeof v==='string'?v:v.value)?'selected':''}>${esc(typeof v==='string'?v:v.label)}</option>`).join('');
@@ -15,7 +15,8 @@ export function bindModernPOS(api){
   const total=all.length;page[kind]=Math.min(page[kind],Math.max(0,Math.ceil(total/25)-1));const display=all.slice(page[kind]*25,page[kind]*25+25);
   $(kind+'DbRows').innerHTML=display.map(({o,i})=>{
    const id=`<b>${esc(i.existingId)}</b><small>POS ${esc(o.posId)}</small>`,customer=`${esc(o.first+' '+(o.last||''))}<small>${esc(o.email||'')}</small>`,pay=financial(profile()?.role)?`${money(i._paid)} allocated<small>POS: ${money(o.received)} · ${esc(o.method)}</small>`:'Restricted';
-   const action=`<button class="btn outline" data-edit-record="${esc(o.posId)}" data-item-key="${esc(i.itemKey)}">View / Edit</button>`;
+   let action=`<button class="btn outline" data-edit-record="${esc(o.posId)}" data-item-key="${esc(i.itemKey)}">View / Edit</button>`;
+   if(kind==='editing'&&['owner','admin'].includes(profile()?.role)){const mirror=remitRecords.get(i.itemKey),state=mirrorBusy.has(i.itemKey)?'MIRRORING':mirror?.status||'NOT MIRRORED';action+=`<small class="modern-badge">${esc(state)}</small><button class="btn outline" data-remit-mirror="${esc(o.posId)}" data-remit-key="${esc(i.itemKey)}" ${!o.stagingTest||mirrorBusy.has(i.itemKey)?'disabled':''}>${state==='REVIEW REQUIRED'?'Review / reconcile':'Mirror to REMIT'}</button>${mirror?.row?`<small>TEST REMIT row ${mirror.row} · v${mirror.lastSyncedVersion}</small>`:''}`;}
    if(kind==='editing')return `<tr><td>${id}</td><td>${customer}</td><td>${esc(i.orderType)}<small>${esc(i.fileType)}${i.rushTargetDate?' · '+esc(i.rushTargetDate):''}</small></td><td>${esc(staff.find(s=>s.uid===i.assignedTo)?.name||i.assignedTo||'Unassigned')}</td><td><span class="modern-badge">${esc(i.status)}</span><small>${link(i.fileUrl,'Open file')}</small></td><td>${pay}<small>Frame: ${esc(i.frameOrderId||'—')}</small></td><td>${action}</td></tr>`;
    const shipping=o.shipping||{},linked=o.items.filter(x=>x.kind==='editing'&&x.frameOrderId===i.existingId).map(x=>x.existingId).join(', ');
    return `<tr><td>${id}</td><td>${customer}<small>Receiver: ${esc(shipping.receiverName||[o.first,o.last].join(' '))}<br>${esc(shipping.contactPhone||o.phone||'')}</small></td><td>${esc(i.size)}<small>${esc(i.design)}</small></td><td>${esc(shipping.ship)}<small>${esc([shipping.street,shipping.barangay,shipping.city,shipping.province,shipping.postal].filter(Boolean).join(', '))}</small></td><td><span class="modern-badge">${esc(i.status)}</span><small>${esc(i.trackingNumber||'No tracking number')}</small></td><td>${pay}<small>Editing: ${esc(linked||'—')}</small></td><td>${action}</td></tr>`;
@@ -28,6 +29,7 @@ export function bindModernPOS(api){
   refreshing=(async()=>{for(const k of ['editing','frame'])feedback(k+'DbFeedback','Loading Firebase orders…');try{
    const list=[];let cursor=null;do{const result=await call('listOrders',{limit:150,cursor});list.push(...result.orders);cursor=result.nextCursor;}while(cursor);orders=list;
    if(financial(profile()?.role))staff=(await call('listStaff')).staff;
+   if(['owner','admin'].includes(profile()?.role)){remitRecords.clear();const ids=[...new Set(orders.map(o=>o.posId))];for(let n=0;n<ids.length;n+=30){const status=await call('remitMirrorStatuses',{posIds:ids.slice(n,n+30)});for(const record of status.records)remitRecords.set(record.itemKey,record);}}
    rows('editing');rows('frame');for(const k of ['editing','frame'])feedback(k+'DbFeedback','');
   }catch(error){for(const k of ['editing','frame'])feedback(k+'DbFeedback','Could not load orders: '+error.message,true);}finally{refreshing=null;}})();return refreshing;
  }
@@ -46,7 +48,7 @@ export function bindModernPOS(api){
    html+=field('item.status',item.kind==='editing'?'Editing status':'Production status',item.status,{values:statuses[item.kind],readonly:!op});
    if(item.kind==='editing'){
     html+=field('item.assignedTo','Assigned editor',item.assignedTo||'',{values:[{value:'',label:'Unassigned'},...staff.filter(s=>s.active&&s.role==='editor').map(s=>({value:s.uid,label:s.name}))],readonly:!['owner','admin','encoder'].includes(role)});
-    html+=field('item.orderType','Editing category',item.orderType,{values:editingTypes,readonly:!f})+field('item.fileType','File type',item.fileType,{values:['NORMAL FILE','RUSH FILE','REVISION PAYMENT','ADDITIONAL PAYMENT'],readonly:!f})+field('item.rushTargetDate','Rush target date',item.rushTargetDate,{type:'date',readonly:!f})+field('item.frameOrderId','Linked frame',item.frameOrderId||'',{values:['',...order.items.filter(i=>i.kind==='frame').map(i=>i.existingId)],readonly:!f})+field('item.fileUrl','Editing file URL',item.fileUrl,{type:'url',readonly:!op,full:true});
+    html+=field('item.orderType','Editing category',item.orderType,{values:editingTypes,readonly:!f})+field('item.fileType','File type',item.fileType,{values:['NORMAL FILE','RUSH FILE','REVISION PAYMENT','ADDITIONAL PAYMENT'],readonly:!f})+field('item.rushTargetDate','Rush target date',item.rushTargetDate,{type:'date',readonly:!f})+field('item.frameOrderId','Linked frame',item.frameOrderId||'',{values:['',...order.items.filter(i=>i.kind==='frame').map(i=>i.existingId)],readonly:!f})+field('item.fileUrl','Editing file URL',item.fileUrl,{type:'url',readonly:!op,full:true})+field('item.noteFileUrl','Note file URL',item.noteFileUrl,{type:'url',readonly:!op,full:true});
    }else{
     html+=field('item.trackingNumber','Tracking number',item.trackingNumber,{readonly:!op})+field('item.photoUrl','Customer photo Drive URL',item.photoUrl,{type:'url',readonly:!op,full:true})+field('item.mockupUrl','Mockup Drive URL',item.mockupUrl,{type:'url',readonly:!op,full:true});
     for(const [k,label] of [['receiverName','Receiver Name'],['contactPhone','Receiver contact'],['street','Street / House / Unit'],['barangay','Barangay'],['city','City / Municipality'],['province','Province'],['region','Region'],['postal','Postal code'],['area','Shipping area'],['ship','Shipment method'],['notes','Shipping notes']])html+=field('shipping.'+k,label,order.shipping?.[k],{readonly:!f,values:k==='ship'?['LBC','LALAMOVE']:k==='area'?['','Luzon','Visayas','Mindanao']:undefined});
@@ -69,6 +71,21 @@ export function bindModernPOS(api){
   try{await call('editOrderRecord',{posId:selected.order.posId,expectedVersion:selected.order.version,patch});$('databaseEditor').close();await refresh();await dashboard();api.refreshLegacy();}
   catch(error){feedback('databaseEditorFeedback','Save not confirmed: '+error.message+' Reload this record before retrying.',true);}finally{button.disabled=false;}
  });
+ async function mirrorRemit(posId,itemKey){
+  if(mirrorBusy.has(itemKey))return;mirrorBusy.add(itemKey);rows('editing');feedback('editingDbFeedback','Checking saved editing order and TEST REMIT…');
+  try{
+   const preview=await call('previewRemitMirror',{posId,itemKey});
+   if(preview.needsReconciliation){
+    if(!window.confirm('REVIEW REQUIRED · POS '+posId+' · '+preview.editingId+'\nRead TEST REMIT row '+preview.row+' and reconcile the previous uncertain result? This will not resend or append a row.'))return;
+    const result=await call('reconcileRemitMirror',{posId,itemKey});feedback('editingDbFeedback',result.status+' · '+(result.row?'TEST REMIT row '+result.row:'')+(result.status==='FAILED'?' · No write was found. Preview again to confirm a manual retry.':''));
+   }else{
+    if(!window.confirm((preview.alreadyMirrored?'Already mirrored — verify existing record':'Mirror editing order')+'\nPOS '+posId+' · '+preview.editingId+'\nDestination: '+preview.destinationLabel+'\nSpreadsheet: '+preview.spreadsheetId+' · GID '+preview.sheetId+'\nAction: '+preview.action+' · row '+preview.row+'\nTEST COPY ONLY. Firebase payment and Viber delivery will not be repeated.'))return;
+    const result=await call('syncRemitMirror',{posId,itemKey,expectedVersion:preview.version,confirmationToken:preview.confirmationToken});feedback('editingDbFeedback',result.status+' · TEST REMIT row '+result.row+(result.lastError?' · '+result.lastError:''),['FAILED','REVIEW REQUIRED'].includes(result.status));
+   }
+  }catch(error){feedback('editingDbFeedback','REMIT mirror not confirmed: '+error.message+'. Firebase payment remains unchanged.',true);}
+  finally{const message=$('editingDbFeedback').textContent,error=$('editingDbFeedback').classList.contains('error');mirrorBusy.delete(itemKey);await refresh();feedback('editingDbFeedback',message,error);}
+ }
+ document.addEventListener('click',event=>{const b=event.target.closest('[data-remit-mirror]');if(b)mirrorRemit(b.dataset.remitMirror,b.dataset.remitKey);});
  $('closeDatabaseEditor').onclick=()=>$('databaseEditor').close();
  $('editPaymentCorrection').onclick=()=>{if(selected){$('databaseEditor').close();api.editPayment(selected.order);}};
  document.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-record]'),pay=event.target.closest('[data-payment-edit]'),open=event.target.closest('[data-open]');if(edit)openEditor(edit.dataset.editRecord,edit.dataset.itemKey);if(pay)call('getOrder',{posId:pay.dataset.paymentEdit}).then(({order})=>api.editPayment(order)).catch(e=>feedback('dashboardFeedback',e.message,true));if(open)api.openTab(open.dataset.open);});

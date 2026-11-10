@@ -29,7 +29,7 @@ function validate(raw){
     if(!['editing','frame'].includes(kind))throw Error('Service type invalid');
     if(!new RegExp(kind==='editing'?'^RF\\d{5}[A-Z]$':'^[A-Z]{2}\\d[A-Z]\\d$').test(existingId))throw Error('Invalid '+kind+' ID '+existingId);
     const key=kind+'|'+existingId;if(seen.has(key))throw Error('Duplicate order ID '+existingId);seen.add(key);
-    const base={kind,existingId,orderType:str(it.orderType||'Family',40),amount:nonnegative(it.amount,'Item amount'),notes:str(it.notes,3000),fileUrl:https(it.fileUrl),assignedTo:str(it.assignedTo,120)};
+    const base={kind,existingId,orderType:str(it.orderType||'Family',40),amount:nonnegative(it.amount,'Item amount'),notes:str(it.notes,3000),fileUrl:https(it.fileUrl),noteFileUrl:https(it.noteFileUrl),assignedTo:str(it.assignedTo,120)};
     if(!serviceTypes.includes(base.orderType))throw Error('Invalid service type');
     if(kind==='editing'){
       if(!['NORMAL FILE','RUSH FILE','REVISION PAYMENT','ADDITIONAL PAYMENT'].includes(it.fileType||'NORMAL FILE'))throw Error('Invalid file type');

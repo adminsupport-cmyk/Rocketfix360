@@ -69,7 +69,7 @@ function letter(payload){
 // Explicit allowlists prevent newly added financial fields leaking to operational roles.
 function projection(o,actor){
  if(['owner','admin','sales'].includes(actor.role))return o;
- const items=o.items.filter(i=>actor.role==='editor'?i.kind==='editing'&&i.assignedTo===actor.uid:actor.role==='production'?i.kind==='frame':true).map(i=>Object.fromEntries(['kind','existingId','itemKey','orderType','size','design','fileType','rushTargetDate','frameOrderId','status','fileUrl','photoUrl','assignedTo','notes','trackingNumber','mockupUrl','addOnType','addOnFont','addOnColor','addOnMessage'].filter(k=>i[k]!==undefined).map(k=>[k,i[k]])));
+ const items=o.items.filter(i=>actor.role==='editor'?i.kind==='editing'&&i.assignedTo===actor.uid:actor.role==='production'?i.kind==='frame':true).map(i=>Object.fromEntries(['kind','existingId','itemKey','orderType','size','design','fileType','rushTargetDate','frameOrderId','status','fileUrl','noteFileUrl','photoUrl','assignedTo','notes','trackingNumber','mockupUrl','addOnType','addOnFont','addOnColor','addOnMessage'].filter(k=>i[k]!==undefined).map(k=>[k,i[k]])));
  for(const item of items){const source=o.items.find(i=>i.itemKey===item.itemKey);if(source?.lateLetter)item.lateLetter=Object.fromEntries(['addOnType','addOnFont','addOnColor','addOnMessage'].map(k=>[k,source.lateLetter[k]]));}
  return {posId:o.posId,first:o.first,last:o.last,version:o.version,voidedAt:o.voidedAt,createdAt:o.createdAt,updatedAt:o.updatedAt,items,shipping:Object.fromEntries(['ship','receiverName','contactPhone','street','barangay','city','province','postal','area','notes'].map(k=>[k,o.shipping?.[k]||'']))};
 }

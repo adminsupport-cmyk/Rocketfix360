@@ -1,0 +1,13 @@
+{
+  "environment":"test",
+  "enabled":true,
+  "productionWritesEnabled":false,
+  "spreadsheetId":"1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc",
+  "sheetId":1129443859,
+  "tab":"REMIT",
+  "firstRow":6,
+  "lastRow":10628,
+  "timeZone":"Asia/Hong_Kong",
+  "writerServiceAccount":"855901392227-compute@developer.gserviceaccount.com",
+  "headers":["Date","Email","Name","Order Type","File Type","Amount","MAIN FILE","","NOTE FILE","","Frame Order ID","Handled By","Tip Amount","Notes","POS Proof URL","POS Transaction ID","POS Editing Order ID","POS Item Key","POS Encoded At","POS Updated At","POS Payment Method","POS Shipment Method","POS Paid Allocation","POS Discount Allocation","POS Sync Status","POS Payment Received"]
+}

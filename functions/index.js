@@ -100,7 +100,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
    const old=prior?.items.find(x=>x.itemKey===it.itemKey);
    if(old?.lateLetter&&it.addOnType)throw Error('Late letter already paid; do not add another letter charge');
    if(old?.addOnType==='Personalized Letter'&&(it.addOnType!==old.addOnType||it.addOnCommissionRecipient!==old.addOnCommissionRecipient))throw Error('Paid letter and commission recipient cannot change');
-   if(old){for(const k of ['status','fileUrl','assignedTo','trackingNumber','mockupUrl','completedAt','lateLetter'])if(old[k]!==undefined)it[k]=old[k];}
+   if(old){for(const k of ['status','fileUrl','noteFileUrl','assignedTo','trackingNumber','mockupUrl','completedAt','lateLetter'])if(old[k]!==undefined)it[k]=old[k];}
   }
   const assignments=clean.items.filter(x=>x.assignedTo);
   for(const it of assignments){const staff=await t.get(db.doc('staff/'+it.assignedTo));if(!staff.exists||staff.data().active!==true||staff.data().role!=='editor')throw Error('Assigned employee must be an active editor');}
@@ -287,3 +287,9 @@ exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  });
  await processMirror(db,ref,sheetsTransport);return {ok:true};
 });
+// Manual editing-only TEST REMIT synchronization; no automatic event trigger.
+const manualRemit=require('./manual-remit').createManualRemit(db);
+exports.previewRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.preview(data,actor));
+exports.syncRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.sync(data,actor));
+exports.reconcileRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.reconcile(data,actor));
+exports.remitMirrorStatuses=call(['owner','admin'],async (data,actor)=>manualRemit.statuses(data,actor));

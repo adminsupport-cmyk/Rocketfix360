@@ -21,7 +21,7 @@ function applyRecordEdit(order,patch,actor){
  if(patch.items!==undefined){
   if(!Array.isArray(patch.items)||patch.items.length>20)throw Error('Invalid item changes');const seen=new Set();
   for(const change of patch.items){
-   keys(change,['itemKey','status','assignedTo','fileUrl','mockupUrl','photoUrl','trackingNumber','notes','orderType','fileType','rushTargetDate','frameOrderId']);
+   keys(change,['itemKey','status','assignedTo','fileUrl','noteFileUrl','mockupUrl','photoUrl','trackingNumber','notes','orderType','fileType','rushTargetDate','frameOrderId']);
    if(seen.has(change.itemKey))throw Error('Duplicate item changes');seen.add(change.itemKey);
    const item=clean.items.find(x=>x.itemKey===change.itemKey);if(!item)throw Error('Item not found');
    if(actor.role==='editor'&&(item.kind!=='editing'||item.assignedTo!==actor.uid))throw Error('Not assigned to this editing order');
@@ -35,7 +35,7 @@ function applyRecordEdit(order,patch,actor){
      if(!workflow.has(actor.role))throw Error('Workflow changes require an authorized operational role');
      if(key==='status'){if(!(item.kind==='editing'?editStatuses:frameStatuses).includes(value))throw Error('Invalid status');item.status=value;}
      if(key==='assignedTo'){if(!['owner','admin','encoder'].includes(actor.role)||item.kind!=='editing')throw Error('Assignment requires admin or encoder');item.assignedTo=text(value,128);}
-     if(key==='fileUrl'){if(item.kind!=='editing')throw Error('Editing file only');item.fileUrl=url(value);}
+     if(['fileUrl','noteFileUrl'].includes(key)){if(item.kind!=='editing')throw Error('Editing file only');item[key]=url(value);}
      if(['photoUrl','mockupUrl','trackingNumber'].includes(key)){if(item.kind!=='frame')throw Error('Frame detail only');item[key]=key==='trackingNumber'?text(value,120):url(value);}
     }
    }

@@ -1,0 +1,153 @@
+{
+  "project": "rocketfix-360-staging",
+  "sourceSpreadsheetId": "10W8zrKf9rX-BFH2VLDyj8dwNlVJDca2_yArN9eIyNwY",
+  "sourceTab": "REMIT",
+  "sourceGid": 1830742337,
+  "testSpreadsheetId": "1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc",
+  "testGid": 1129443859,
+  "testUrl": "https://docs.google.com/spreadsheets/d/1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc/edit#gid=1129443859",
+  "writerServiceAccount": "855901392227-compute@developer.gserviceaccount.com",
+  "permissionsVerified": "Owner plus staging service-account writer only",
+  "sanitization": {
+    "dataRows": 10623,
+    "preservedFormulas": 27633,
+    "remainingCustomerLiterals": 0,
+    "chunks": [
+      {
+        "startRow": 6,
+        "endRow": 505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3541
+      },
+      {
+        "startRow": 506,
+        "endRow": 1005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3545
+      },
+      {
+        "startRow": 1006,
+        "endRow": 1505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3594
+      },
+      {
+        "startRow": 1506,
+        "endRow": 2005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3756
+      },
+      {
+        "startRow": 2006,
+        "endRow": 2505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3752
+      },
+      {
+        "startRow": 2506,
+        "endRow": 3005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3620
+      },
+      {
+        "startRow": 3006,
+        "endRow": 3505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3663
+      },
+      {
+        "startRow": 3506,
+        "endRow": 4005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3603
+      },
+      {
+        "startRow": 4006,
+        "endRow": 4505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3603
+      },
+      {
+        "startRow": 4506,
+        "endRow": 5005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3609
+      },
+      {
+        "startRow": 5006,
+        "endRow": 5505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3576
+      },
+      {
+        "startRow": 5506,
+        "endRow": 6005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3554
+      },
+      {
+        "startRow": 6006,
+        "endRow": 6505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3606
+      },
+      {
+        "startRow": 6506,
+        "endRow": 7005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3569
+      },
+      {
+        "startRow": 7006,
+        "endRow": 7505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3563
+      },
+      {
+        "startRow": 7506,
+        "endRow": 8005,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3503
+      },
+      {
+        "startRow": 8006,
+        "endRow": 8505,
+        "preservedFormulas": 1500,
+        "clearedLiterals": 3515
+      },
+      {
+        "startRow": 8506,
+        "endRow": 9005,
+        "preservedFormulas": 1497,
+        "clearedLiterals": 4026
+      },
+      {
+        "startRow": 9006,
+        "endRow": 9505,
+        "preservedFormulas": 636,
+        "clearedLiterals": 4388
+      },
+      {
+        "startRow": 9506,
+        "endRow": 10005,
+        "preservedFormulas": 0,
+        "clearedLiterals": 5752
+      },
+      {
+        "startRow": 10006,
+        "endRow": 10505,
+        "preservedFormulas": 0,
+        "clearedLiterals": 36
+      },
+      {
+        "startRow": 10506,
+        "endRow": 10628,
+        "preservedFormulas": 0,
+        "clearedLiterals": 0
+      }
+    ]
+  },
+  "headerRow": 5,
+  "productionWritesEnabled": false,
+  "sourceMetadataLimitations": "Source values, header, cell formulas, validation and formatting inspected through connector. Direct OAuth lookup for live merges/protections returned HTTP 403; inspect inherited merges/protections through backend before test writes. Offline relevant Apps Script source inspected; live installed trigger inventory not available."
+}
