@@ -53,3 +53,7 @@ Pushing the **original** development branch remains dependent on access to the c
 - Two failing emulator leaf tests; exact historical runtime and full authenticated browser QA remain unverified.
 - Five legacy sources, approved offline pricing/shipping values, Tracking/loyalty and permission rules remain missing. No invented business rules are approved.
 - Production parity, migration reconciliation and security/deployment checks remain open. No production-readiness claim is made.
+
+## Approved backup attempt — authentication blocked
+
+The user approved the recovered-branch GitHub backup. An HTTPS dry-run push failed because local Git has no usable GitHub credentials (`could not read Username`). Strict SSH fallback also failed due to absent trusted host-key configuration; no trust bypass or credential changes were made. The installed GitHub connector exposes no repository-write tool in this session. **No push occurred; remote contents cannot yet be verified.** Authentication for Git on this Mac is required before retrying. The earlier automatic-review authorization issue for this recovery branch is resolved. See RECOVERY_REMOTE.md for exact attempt results. No tests or application files changed in this follow-up.
