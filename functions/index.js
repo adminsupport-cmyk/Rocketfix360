@@ -10,13 +10,13 @@ const providerSecrets=notificationPolicy.externalSendingAuthorized?Object.values
 const providerAdapter=createProviderAdapter({readCredentials:()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]))});
 const {onDocumentCreated}=require('firebase-functions/v2/firestore');
 const admin=require('firebase-admin');
-const {FieldValue,getFirestore}=require('firebase-admin/firestore');
+const {FieldValue,FieldPath,getFirestore}=require('firebase-admin/firestore');
 const {createHash}=require('node:crypto');
 const {validate,earnings,editStatuses,frameStatuses}=require('./core');
 const {quoteOrder,pricingConfig,letter,projection,date}=require('./workflows');
 admin.initializeApp();
 const db=getFirestore(admin.app(),'rocketfix360database'), REGION='asia-southeast1';
-const {assertStaging,assertStagingOrder}=require('./runtime');
+const {assertStaging,assertStagingOrder,assertFinancialTesting}=require('./runtime');
 function staging(){try{assertStaging();}catch(e){throw new HttpsError('failed-precondition',e.message);}}
 const permitted=new Set(['owner','admin','sales','encoder','editor','production']);
 const now=()=>new Date().toISOString();
@@ -32,22 +32,38 @@ const writer=['owner','admin','sales'],readers=['owner','admin','sales','encoder
 const call=(roles,handler,options={})=>onCall({region:REGION,timeoutSeconds:60,maxInstances:12,...options,...httpsInvocation},async req=>{const actor=await requireRole(req,roles);try{return await handler(req.data||{},actor);}catch(e){return fail(e);}});
 const publicOrder=(o,role,uid)=>projection(o,{role,uid});
 exports.myAccess=onCall({region:REGION,...httpsInvocation},async req=>{staging();if(!req.auth)throw new HttpsError('unauthenticated','Sign in');const d=await db.doc('staff/'+req.auth.uid).get();const s=d.data();return d.exists&&s.active===true&&permitted.has(s.role)?{name:s.name||'',role:s.role,uid:req.auth.uid}:{role:null,uid:req.auth.uid};});
-exports.listOrders=call(readers,async ({limit:lim=80},actor)=>{
+exports.listOrders=call(readers,async ({limit:lim=80,cursor},actor)=>{
  const size=Math.min(Math.max(Number(lim)||80,1),150);
- const s=await db.collection('orders').orderBy('createdAt','desc').limit(size).get();
+ let query=db.collection('orders').orderBy('createdAt','desc').orderBy(FieldPath.documentId(),'desc');
+ if(cursor&&!writer.includes(actor.role))throw Error('History pagination requires financial access');
+ if(cursor){if(typeof cursor.createdAt!=='string'||!/^\d{8}$/.test(String(cursor.posId)))throw Error('Invalid history cursor');query=query.startAfter(cursor.createdAt,cursor.posId);}
+ const s=await query.limit(size).get();
  let all=s.docs.map(d=>d.data());if(!writer.includes(actor.role))all=all.filter(o=>!o.voidedAt);
  if(actor.role==='editor')all=all.filter(o=>o.items.some(i=>i.kind==='editing'&&i.assignedTo===actor.uid)).map(o=>({...o,items:o.items.filter(i=>i.kind==='editing'&&i.assignedTo===actor.uid)}));
  if(actor.role==='production')all=all.filter(o=>o.items.some(i=>i.kind==='frame')).map(o=>({...o,items:o.items.filter(i=>i.kind==='frame')}));
- return {orders:all.map(o=>publicOrder(o,actor.role,actor.uid))};
+ const last=s.docs.at(-1);return {orders:all.map(o=>publicOrder(o,actor.role,actor.uid)),nextCursor:writer.includes(actor.role)&&s.size===size&&last?{createdAt:last.data().createdAt,posId:last.id}:null};
 });
-exports.getOrder=call(readers,async ({posId},actor)=>{
+exports.getOrder=call(readers,async ({posId,frameId,requestId},actor)=>{
+ if(frameId){
+  if(!/^[A-Z]{2}\d[A-Z]\d$/.test(String(frameId)))throw Error('Legacy frame lookup requires reconciled migration');
+  const key=(await db.doc('orderKeys/'+encodeURIComponent('frame|'+frameId)).get()).data();if(!key)throw Error('Frame not found');posId=key.posId;
+ }
  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID');
  const s=await db.doc('orders/'+posId).get();if(!s.exists)throw Error('Order not found');
  const o=s.data();if(o.voidedAt&&!writer.includes(actor.role))throw Error('Order voided');if(actor.role==='editor'&&!o.items.some(i=>i.kind==='editing'&&i.assignedTo===actor.uid))throw Error('Not assigned');
  if(actor.role==='production'&&!o.items.some(i=>i.kind==='frame'))throw Error('No frame access');
+ if(requestId!==undefined){
+  if(!writer.includes(actor.role)||!/^[a-zA-Z0-9_-]{16,100}$/.test(String(requestId)))throw Error('Valid payment request identity required');
+  const replay=(await db.doc('requests/'+actor.uid+'_'+requestId).get()).data();
+  if(!replay)return {order:publicOrder(o,actor.role,actor.uid),requestCommitted:false};
+  if(replay.outcome.posId!==String(posId))throw Error('Payment request belongs to another POS ID');
+  const receipt=(await db.doc('orders/'+posId+'/revisions/'+replay.outcome.version).get()).data();if(!receipt)throw Error('Committed receipt requires reconciliation');
+  return {order:publicOrder(receipt,actor.role,actor.uid),requestCommitted:true};
+ }
  return {order:publicOrder(o,actor.role,actor.uid)};
 });
 exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
+ assertFinancialTesting();
  assertStagingOrder(order);
  if(!/^[a-zA-Z0-9_-]{16,100}$/.test(String(requestId||'')))throw Error('A stable request ID is required');
  const fingerprint=createHash('sha256').update(JSON.stringify({order,expectedVersion:expectedVersion||null})).digest('hex');
@@ -80,7 +96,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const keys=newItems.map(it=>db.doc('orderKeys/'+encodeURIComponent(it.kind+'|'+it.existingId)));
   const keySnaps=await Promise.all(keys.map(k=>t.get(k)));
   keySnaps.forEach((s,i)=>{if(s.exists && s.data().posId!==id)throw Error('Order ID already used: '+newItems[i].existingId);});
-  const target={...clean,environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
+  const target={...clean,environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
   t.set(doc,target);
   t.create(db.doc('orders/'+id+'/revisions/'+target.version),{...target});
   keys.forEach((key,i)=>t.set(key,{posId:id,itemKey:newItems[i].itemKey,kind:newItems[i].kind,orderId:newItems[i].existingId,createdAt:currentTime}));
@@ -128,6 +144,7 @@ exports.updateItemStatus=call(['owner','admin','encoder','editor','production'],
  return {ok:true,oldStatus:res.old,newStatus:status};
 });
 exports.voidOrder=call(['owner','admin'],async ({posId,expectedVersion,reason},actor)=>{
+ assertFinancialTesting();
  if(String(reason||'').trim().length<5)throw Error('Reason is required');
  await db.runTransaction(async t=>{
   const ref=db.doc('orders/'+String(posId)),snap=await t.get(ref);if(!snap.exists)throw Error('Order not found');
@@ -170,12 +187,13 @@ exports.retryNotification=call(['owner','admin'],async ({eventId})=>{
 },{secrets:providerSecrets});
 exports.getPricing=call(writer,async()=>({...(await db.doc('stagingConfig/pricing').get()).data()||{rates:{},custom:{}}}));
 exports.savePricing=call(['owner','admin'],async ({config,expectedVersion},actor)=>{
+ assertFinancialTesting();
  const clean=pricingConfig(config||{}),ref=db.doc('stagingConfig/pricing');
  return db.runTransaction(async t=>{const prior=(await t.get(ref)).data();if((prior?.version||0)!==(expectedVersion||0))throw Error('Pricing changed; reload settings');
  const target={...clean,version:(prior?.version||0)+1,updatedAt:now()};t.set(ref,target);
  t.create(db.collection('audit').doc(),{action:'PRICING',actor:actor.uid,at:now(),before:prior||null,after:target});return target;});
 });
-exports.quote=call(writer,async ({order})=>({order:quoteOrder(order,(await db.doc('stagingConfig/pricing').get()).data()||{},false)}));
+exports.quote=call(writer,async ({order})=>{assertFinancialTesting();return {order:quoteOrder(order,(await db.doc('stagingConfig/pricing').get()).data()||{},false)};});
 exports.listStaff=call(['owner','admin','sales','encoder'],async()=>({staff:(await db.collection('staff').get()).docs.map(d=>({uid:d.id,name:d.data().name,role:d.data().role,active:d.data().active===true}))}));
 exports.setStaff=call(['owner'],async ({uid,name,role,active},actor)=>{
  if(!/^[A-Za-z0-9_-]{1,128}$/.test(String(uid))||!permitted.has(role)||typeof active!=='boolean'||!String(name||'').trim())throw Error('Valid staff UID, name, role and active state required');
@@ -199,6 +217,7 @@ exports.salesReport=call(writer,async ({from,to})=>{
  return {orders,lateLetters,totals:{orders:orders.length,editing:sum('editPaid'),frames:sum('framePaid'),tips:sum('tip'),excess:sum('excess'),lateLetters:lateLetters.length*200,sales:Math.round((sum('editPaid')+sum('framePaid')+lateLetters.length*200)*100)/100},note:'Sales excludes tips and Excess; framing includes shipping and at-order letters.'};
 });
 exports.saveLateLetter=call(writer,async (payload,actor)=>{
+ assertFinancialTesting();
  const id=String(payload.id||'').toUpperCase();if(!/^[A-Z]{2}\d[A-Z]\d$/.test(id))throw Error('Invalid frame ID');
  const value=letter(payload),ref=db.doc('lateLetters/'+id);
  return db.runTransaction(async t=>{

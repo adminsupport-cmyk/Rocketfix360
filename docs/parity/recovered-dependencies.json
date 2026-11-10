@@ -1,0 +1,68 @@
+[
+  {
+    "name": "FramePricing.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_7_Live_Update_Notification/FramePricing.gs",
+    "sha256": "1dc364a3f242adfcc3811a56076426954a4b336e668f125ccb2f323111cf7fd2",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "DeviceAccess.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_5_Flexible_ID_Viber_Report/DeviceAccess.gs",
+    "sha256": "882cee64befada13392e916e9820c63051714e4c9ff6082bf305f26e564a4359",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "POS_Emailer.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Emailer_V8_Short_Lock.gs",
+    "sha256": "5aeb5ead04243d3cd8c8cdf9ee2ff6c31cb620576160b44fa71f1b8b6912693a",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "TransactionMailer.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_TransactionMailer_V4_POS_ID_Compatible.gs",
+    "sha256": "566cdcc1e6ed295cade7ebe0816fc50544bf05d58164f9f8a1f4aa7198c9eb9e",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "ViberChannel.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Viber_Channel_Setup_v1/Rocketfix_POS_Viber_Channel_v1.gs",
+    "sha256": "6a805a0cc612906c8fe65f71908ac2508eaa1cc7cdba62ddc25d72c4c4be7b77",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "HistoricalReporting.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_HistoricalReporting_v29_Recorder.gs",
+    "sha256": "408d7f90f57c199f8ac393ba00f03ab94ebd8d4d18dbe945f6f03812eabbf054",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "LegacyEdit.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V15_7_Editable_Historical_Orders/LegacyEdit_V15_7.gs",
+    "sha256": "aa030c9cd357108b1736af677ac5994f61e0d3320f404b17cb8c74db99797f8c",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "Directory.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Customer_Directory_Incremental_v25.gs",
+    "sha256": "d42acbfdacd97851899e6bd8046d24addbedb0fb21bbd53ab3daaf2ab68ddd06",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "PhilippinesLocations.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V13_Smart_PH_Locations/PhilippinesLocations.gs",
+    "sha256": "9925cf35b7bce680a69a89e8aef871feaad3b75462622913023535c162544a0f",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "PortalAuth.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_PortalAuth_V3_1_All_Active_Roles.gs",
+    "sha256": "20c430279eddb8997d073e03b71d1b1c4f4021c43ecb7c7a0a80dc4028d02ec5",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  },
+  {
+    "name": "TrackingAutofill.gs",
+    "origin": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V10_Frame_Link_Rush_Delete/Tracking_Paste_ID_AutoFill_V4.gs",
+    "sha256": "3d8d1c8a43323b77fac8ea6814594f7ed92625543943153efadb7fcc633c4a18",
+    "status": "LOCAL_CANDIDATE_NOT_DEPLOYMENT_VERIFIED"
+  }
+]

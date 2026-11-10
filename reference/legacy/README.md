@@ -9,3 +9,5 @@ For each source, compare the archive hash, inspect callers/dependencies, documen
 Missing shipping/product/staff configuration must come from a separately provided offline export. The build must not read the live configuration sheet. No example price, zero/base default, dimension default, inferred region, or entered fixture rate counts as approved data. Tracking implementation and function names remain unknown until its backend is supplied.
 
 Source review order: FramePricing; DeviceAccess; TransactionMailer and POS_Emailer together; ViberChannel; Tracking when available. Preserve documented business behavior and add parity fixtures before changing the Firebase implementation. Provider adapters already exist, but actual sending remains disabled until separately authorized testing and verified destinations.
+
+2026-11-10 intake: local source candidates are now present. Provenance and hashes are in `docs/parity/recovered-dependencies.json`. Their presence does not verify the deployed version or current workbook configuration. Tracking autofill is available as a candidate; complete editor/production workflow and permission parity remain under review.

@@ -7,7 +7,7 @@ const nonnegative = (v, label='Amount') => {
   return round(n);
 };
 const employees=['Joyce Marianne Legaspi','Renz Malenab','Joy Deplomo','Lerni Belino','Mariz Osabel'];
-const serviceTypes=['Family','Solo','Couple','Manipulation','Enhancement','Restoration','Graduation','Wedding'];
+const serviceTypes=['Family','Solo','Couple','Manipulation','Enhancement','Restoration','Graduation','Wedding','Fetched'];
 const frameStatuses=['HOLD','READY TO PROCESS','READY TO PRINT','PRINTED','ASSEMBLING','SHIPPED OUT','COMPLETED','REFUNDED'];
 const editStatuses=['Not started','On going','Finalizing','Delivered'];
 function validate(raw){
@@ -32,9 +32,9 @@ function validate(raw){
     const base={kind,existingId,orderType:str(it.orderType||'Family',40),amount:nonnegative(it.amount,'Item amount'),notes:str(it.notes,3000),fileUrl:https(it.fileUrl),assignedTo:str(it.assignedTo,120)};
     if(!serviceTypes.includes(base.orderType))throw Error('Invalid service type');
     if(kind==='editing'){
-      if(!['NORMAL FILE','RUSH FILE'].includes(it.fileType||'NORMAL FILE'))throw Error('Invalid file type');
+      if(!['NORMAL FILE','RUSH FILE','REVISION PAYMENT','ADDITIONAL PAYMENT'].includes(it.fileType||'NORMAL FILE'))throw Error('Invalid file type');
       if(it.fileType==='RUSH FILE'&&(!/^\d{4}-\d{2}-\d{2}$/.test(String(it.rushTargetDate))||!Number.isFinite(Date.parse(it.rushTargetDate+'T12:00:00Z'))||new Date(it.rushTargetDate+'T12:00:00Z').toISOString().slice(0,10)!==it.rushTargetDate))throw Error('Valid rush target date required');
-      return {...base,fileType:str(it.fileType||'NORMAL FILE',30),rushTargetDate:str(it.rushTargetDate,10),frameOrderId:str(it.frameOrderId,12).toUpperCase(),status:editStatuses.includes(it.status)?it.status:'Not started'};
+      return {...base,fileType:str(it.fileType||'NORMAL FILE',30),rushTargetDate:it.fileType==='RUSH FILE'?str(it.rushTargetDate,10):'',frameOrderId:str(it.frameOrderId,12).toUpperCase(),status:editStatuses.includes(it.status)?it.status:'Not started'};
     }
     const addOnType=str(it.addOnType,60);
     if(addOnType && addOnType!=='Personalized Letter')throw Error('Unsupported add-on');
@@ -49,9 +49,11 @@ function validate(raw){
     }
     return {...base,size:str(it.size,120),design:str(it.design||'Black with Acrylic Frame',120),status:frameStatuses.includes(it.status)?it.status:'HOLD',photoUrl:https(it.photoUrl),addOnType:letter?addOnType:'',addOnFont:letter?it.addOnFont:'',addOnColor:letter?it.addOnColor:'',addOnMessage:letter?(String(it.addOnMessage).trim().toUpperCase()==='N/A'?'N/A':String(it.addOnMessage)):'',addOnCommissionRecipient:letter?it.addOnCommissionRecipient:'',shippingFee:nonnegative(it.shippingFee||0,'Frame shipping fee'),shippingManual:it.shippingManual!==false,customSize:it.customSize===true,customWidth:it.customSize?nonnegative(it.customWidth):0,customHeight:it.customSize?nonnegative(it.customHeight):0,shippingTier:str(it.shippingTier,60),shippingDays:str(it.shippingDays,60)};
   });
+  const linkedFrames=new Set();
+  for(const item of items.filter(x=>x.kind==='editing'&&x.frameOrderId)){if(linkedFrames.has(item.frameOrderId))throw Error('Frame is linked to multiple editing items');linkedFrames.add(item.frameOrderId);}
   for(const item of items.filter(x=>x.kind==='editing'&&x.frameOrderId)) if(!items.some(x=>x.kind==='frame'&&x.existingId===item.frameOrderId))throw Error('Frame link missing: '+item.frameOrderId);
   const shipping=raw.shipping&&typeof raw.shipping==='object'?raw.shipping:{};
-  const shipment={ship:str(shipping.ship||'LBC',20),receiverName:str(shipping.receiverName,160),contactPhone:str(shipping.contactPhone,50),street:str(shipping.street,250),barangay:str(shipping.barangay,120),city:str(shipping.city,120),province:str(shipping.province,120),postal:str(shipping.postal,20),area:str(shipping.area,100),notes:str(shipping.notes,1000)};
+  const shipment={ship:str(shipping.ship||'LBC',20),receiverName:str(shipping.receiverName,160),contactPhone:str(shipping.contactPhone,50),street:str(shipping.street,250),barangay:str(shipping.barangay,120),city:str(shipping.city,120),province:str(shipping.province,120),postal:str(shipping.postal,20),area:str(shipping.area,100),region:str(shipping.region,120),notes:str(shipping.notes??shipping.shippingNotes,1000)};
   if(items.some(x=>x.kind==='frame')&&!['LBC','LALAMOVE'].includes(shipment.ship))throw Error('Shipping method must be LBC or LALAMOVE');
   const discount=nonnegative(raw.discount||0,'Discount'),tip=nonnegative(raw.tip||0,'Tip'),received=nonnegative(raw.received,'Received'),shippingFee=nonnegative(raw.shippingFee||0,'Shipping fee');
   const subtotal=round(items.reduce((sum,x)=>sum+x.amount+(x.addOnType==='Personalized Letter'?200:0),0));
@@ -81,7 +83,7 @@ function validate(raw){
     const total=group.reduce((a,x)=>a+weight(x),0);let remaining=paid;
     group.forEach((x,i)=>{x._paid=i===group.length-1?remaining:round(total?paid*weight(x)/total:paid/group.length);remaining=round(remaining-x._paid);});
   }
-  return {pricingStatus:items.some(x=>x.kind==='frame')?'UNVERIFIED_FIXTURE':'NOT_APPLICABLE',posId,first,last,email,paymentDate,items:allocated,shipping:shipment,shippingFee,subtotal,discount,tip,tipRecipient,received,due,excess,editPaid:round(edPaid),framePaid:round(framePaid),balance:0,method:str(raw.method||'GCash',60),proofUrl:https(raw.proofUrl),remarks:str(raw.remarks,3000)};
+  return {pricingStatus:items.some(x=>x.kind==='frame')?'UNVERIFIED_FIXTURE':'NOT_APPLICABLE',posId,first,last,email,phone:str(raw.phone,50),proofFileName:str(raw.proofFileName,100),paymentDate,items:allocated,shipping:shipment,shippingFee,subtotal,discount,tip,tipRecipient,received,due,excess,editPaid:round(edPaid),framePaid:round(framePaid),balance:0,method:str(raw.method||'GCash',60),proofUrl:https(raw.proofUrl),remarks:str(raw.remarks,3000)};
 }
 function earnings(order){
   const map={Joyce:employees[0],Renz:employees[1],Joy:employees[2],Lerni:employees[3],Mariz:employees[4]};

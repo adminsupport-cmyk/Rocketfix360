@@ -15,6 +15,7 @@ async function main(){
  const config=JSON.parse(fs.readFileSync(path.resolve(root,configPath),'utf8')),id=validateTarget(config,confirmation),cli=require('./firebase-cli.cjs').cliPath();
  const run=(exe,argv,options={})=>{const r=spawnSync(exe,argv,{cwd:root,stdio:'inherit',...options});if(r.error)throw r.error;if(r.status!==0)throw Error('Staging command failed; deployment stopped');};
  // Contact only the explicitly confirmed staging project; never enumerate or select other projects.
+ fs.writeFileSync(path.join(root,'public/index.html'),require('./restore-original-ui.cjs').generate());
  const out=path.join(root,'.runtime/deploy');fs.mkdirSync(out,{recursive:true});
  fs.cpSync(path.join(root,'public'),path.join(out,'public'),{recursive:true});
  fs.cpSync(path.join(root,'functions'),path.join(out,'functions'),{recursive:true,filter:src=>!src.split(path.sep).some(part=>part==='node_modules'||part.startsWith('.env')||part.startsWith('.secret'))});

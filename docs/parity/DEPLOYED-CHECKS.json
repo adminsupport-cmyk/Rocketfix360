@@ -1,0 +1,107 @@
+{
+  "checkedAt": "2026-11-10T06:06:50.688Z",
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "website": "https://rocketfix-360-staging.web.app",
+  "callables": [
+    {
+      "name": "myAccess",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "listOrders",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "getOrder",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "saveOrder",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "updateItemStatus",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "voidOrder",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "dashboard",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "notificationStatus",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "retryNotification",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "getPricing",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "savePricing",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "quote",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "listStaff",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "setStaff",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "earningsReport",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "salesReport",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "saveLateLetter",
+      "preflight": 204,
+      "unauthenticated": 401
+    }
+  ],
+  "assets": [
+    {
+      "name": "index.html",
+      "sha256": "4e90bee69d613f978459b9beef97cf817fd64a652e919072863d2270e4b21b4c"
+    },
+    {
+      "name": "app.bundle.js",
+      "sha256": "2b0354896ba46a33f678c3f2a2157358041284c8b9eeea62e7dd6f6faefe8f3b"
+    }
+  ],
+  "realNotificationsEnabled": false,
+  "financialWrites": "BLOCKED_OUTSIDE_LOCAL_DEMO",
+  "ownerDeployedAcceptance": "NOT_VERIFIED; no authorized browser session used",
+  "fullParity": false
+}

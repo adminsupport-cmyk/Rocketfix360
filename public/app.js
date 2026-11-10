@@ -2,126 +2,82 @@ import {initializeApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'firebase/auth';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 import {firebaseConfig,functionsRegion,useEmulators} from './config.js';
-const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const php=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-let pricing={custom:{},rates:{}},staff=[],requestId=crypto.randomUUID();
-let auth,functions,profile=null,orders=[],editingId=null,originalVersion=null,workingItems=[];
-const editTypes=['Family','Solo','Couple','Manipulation','Enhancement','Restoration','Graduation','Wedding'];
-const editStates=['Not started','On going','Finalizing','Delivered'];
-const frameStates=['HOLD','READY TO PROCESS','READY TO PRINT','PRINTED','ASSEMBLING','SHIPPED OUT','COMPLETED','REFUNDED'];
-const letterStaff=['Joyce Marianne Legaspi','Renz Malenab','Joy Deplomo','Lerni Belino','Mariz Osabel'];
-let timeout;
-const toast=(message,error=false)=>{const e=$('toast');e.textContent=message;e.style.background=error?'#a13b38':'#174c32';e.style.display='block';clearTimeout(timeout);timeout=setTimeout(()=>e.style.display='none',6000);};
-const tipOptions=arr=>arr.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
-const dateManila=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-function newPosId(){const b=new Uint32Array(1);crypto.getRandomValues(b);return String(10000000+b[0]%90000000);}
-function flash(message){$('banner').textContent=message;$('banner').hidden=false;setTimeout(()=>$('banner').hidden=true,10000);}
-async function call(name,data={}){if(!functions)throw Error('Firebase is not configured');return (await httpsCallable(functions,name,{timeout:70000})(data)).data;}
-function page(name){document.querySelectorAll('.page').forEach(x=>x.hidden=x.id!=='page-'+name);document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===name));$('pageTitle').textContent=({dashboard:'Overview',new:editingId?'Edit Remittance':'New Remittance',orders:'All Orders',editing:'Editing Queue',frames:'Frame Production',notifications:'Email & Viber',settings:'Pricing & Employees',reports:'Sales & Earnings'})[name];if(name==='settings')loadSettings();if(name==='reports')loadReports();if(name==='dashboard')loadDashboard();if(name==='orders'||name==='frames'||name==='editing')renderLists();}
-function input(id){return $(id).value.trim();}function num(id){return Number($(id).value||0);}
-function createItem(kind,prev={}){
-  const uid=String(Math.random()).slice(2,10);
-  const item={uid,kind,existingId:'',orderType:'Family',amount:kind==='frame'?799:0,size:kind==='frame'?'10"x13" - Small':'',design:kind==='frame'?'Black with Acrylic Frame':'',shippingFee:'',fileType:'NORMAL FILE',status:kind==='frame'?'HOLD':'Not started',...prev};
-  workingItems.push(item);renderItems();calculate();
+import adapter from './legacy-adapter.cjs';
+const app=initializeApp(firebaseConfig),auth=getAuth(app),functions=getFunctions(app,functionsRegion);
+if(useEmulators){
+ if(!['localhost','127.0.0.1'].includes(location.hostname)||firebaseConfig.projectId!=='demo-rocketfix-360')throw Error('Sample orders require the local demo emulators');
+ connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectFunctionsEmulator(functions,'127.0.0.1',5001);
+}else if(firebaseConfig.projectId!=='rocketfix-360-staging')throw Error('Only the confirmed staging project is allowed');
+let profile=null,pricingVersion=0;
+const requests=new WeakMap(),pending=new Map();
+const invoke=async(name,data={})=>(await httpsCallable(functions,name,{timeout:70000})(data)).data;
+async function history(){
+ const all=[];let cursor=null;
+ do{const page=await invoke('listOrders',{limit:150,cursor});all.push(...page.orders.filter(o=>!o.voidedAt).map(adapter.fromFirebase));cursor=page.nextCursor||null;}while(cursor);
+ return all;
 }
-function renderItems(){
- $('items').innerHTML=workingItems.map((it,index)=>{
-  const base=`<div class="item-fields"><label>Order ID <input data-item="${index}" data-key="existingId" value="${esc(it.existingId)}" required placeholder="${it.kind==='editing'?'RF12345A':'AB1C2'}"/></label><label>Service / Type<select data-item="${index}" data-key="orderType">${tipOptions(editTypes)}</select></label><label>Item Price (₱)<input type="number" min="0" step=".01" data-item="${index}" data-key="amount" value="${esc(it.amount)}" ${it.kind==='frame'?'readonly':''} required/></label><label>Status<select data-item="${index}" data-key="status">${tipOptions(it.kind==='editing'?editStates:frameStates)}</select></label>`;
-  const extra=it.kind==='editing'?`<label>File Type<select data-item="${index}" data-key="fileType">${tipOptions(['NORMAL FILE','RUSH FILE'])}</select></label><label>Rush Target Date<input type="date" data-item="${index}" data-key="rushTargetDate" value="${esc(it.rushTargetDate||'')}"/></label><label>Linked Frame ID<input data-item="${index}" data-key="frameOrderId" value="${esc(it.frameOrderId||'')}" placeholder="Optional"/></label><label>Assigned editor UID<input data-item="${index}" list="staffOptions" data-key="assignedTo" value="${esc(it.assignedTo||'')}"/></label><label class="span2">Google Drive source photo / folder URL<input type="url" data-item="${index}" data-key="fileUrl" value="${esc(it.fileUrl||'')}"/></label>`:
-  `<label>Frame Size<select data-item="${index}" data-key="size">${tipOptions([...new Set([it.size,'10"x13" - Small','13"x17" - Medium','18"x26.5" - Large','25.5"x35" - X-Large'].filter(Boolean))])}</select></label><label>Frame Design<select data-item="${index}" data-key="design">${tipOptions(['Black with Acrylic Frame','Print Only','Canvas without frame'])}</select></label><label>Custom size<input type="checkbox" data-item="${index}" data-key="customSize" ${it.customSize?'checked':''}/></label><label>Width (in)<input type="number" min=".01" step=".01" data-item="${index}" data-key="customWidth" value="${esc(it.customWidth||'')}"/></label><label>Height (in)<input type="number" min=".01" step=".01" data-item="${index}" data-key="customHeight" value="${esc(it.customHeight||'')}"/></label><label>Per-frame shipping quotation (₱)<input type="number" min="0" step=".01" data-item="${index}" data-key="shippingFee" value="${esc(it.shippingFee??'')}" placeholder="Blank: configured LBC rate"/></label><label>Photo Drive URL<input type="url" data-item="${index}" data-key="photoUrl" value="${esc(it.photoUrl||'')}"/></label><label>Add-on<select data-item="${index}" data-key="addOnType">${tipOptions(['','Personalized Letter'])}</select></label>${it.addOnType==='Personalized Letter'?`<label>Letter Font<select data-item="${index}" data-key="addOnFont">${tipOptions(['Cursive','Typewrited','Regular'])}</select></label><label>Envelope Color<select data-item="${index}" data-key="addOnColor">${tipOptions(['Pink','Blue','White Gold'])}</select></label><label class="span2">Commission Recipient<select data-item="${index}" data-key="addOnCommissionRecipient">${tipOptions(['',...letterStaff])}</select></label><label class="span4">Exact Personalized Letter Message<textarea rows="3" data-item="${index}" data-key="addOnMessage">${esc(it.addOnMessage||'')}</textarea></label>`:''}`;
-  return `<div class="line-item"><div class="item-head"><b>${it.kind==='editing'?'◈ Editing':'▣ Frame'} · Service ${index+1}</b>${!editingId?`<button type="button" class="danger" data-remove="${index}">Remove</button>`:''}</div>${base}${extra}<label class="span4">Order Notes<textarea rows="2" data-item="${index}" data-key="notes">${esc(it.notes||'')}</textarea></label></div></div>`;
- }).join('')||'<div class="empty">No services. Add an editing or frame order.</div>';
- for(const [i,it] of workingItems.entries()) for(const [k,v] of Object.entries(it)){const node=$('items').querySelector(`[data-item="${i}"][data-key="${k}"]`);if(node&&node.tagName==='SELECT')node.value=String(v||'');}
- $('items').querySelectorAll('[data-item]').forEach(node=>{node.addEventListener('change',itemChange);node.addEventListener('input',itemChange);});
- $('items').querySelectorAll('[data-remove]').forEach(node=>node.addEventListener('click',()=>{workingItems.splice(+node.dataset.remove,1);renderItems();calculate();}));
+const unsupported=label=>{throw Error(label+' is unavailable until the original source and staging configuration are verified. No payment was recorded.');};
+async function dispatch(method,args){
+ if(method==='rfPosGetPublishedRelease')return {release:0};
+ if(method!=='rfDeviceCall')throw Error('Unsupported POS action');
+ if(!auth.currentUser||!profile)throw Error('Sign in with an authorized employee account');
+ const [,action,values=[]]=args;
+ switch(action){
+ case 'history':return history();
+ case 'status':{const posId=String(values[0]),requestId=pending.get(posId);const {order,requestCommitted}=await invoke('getOrder',{posId,...(requestId?{requestId}:{})});if(requestCommitted)pending.delete(posId);return {found:true,status:requestId&&!requestCommitted?'PROCESSING':order.voidedAt?'DELETED':'SYNCED',record:order.voidedAt||requestId&&!requestCommitted?null:adapter.fromFirebase(order)};}
+ case 'save':{
+  const record=values[0];if(values[1])return unsupported('Google Drive proof upload');
+  if(!requests.has(record))requests.set(record,crypto.randomUUID());
+  pending.set(record.posId,requests.get(record));
+  const result=await invoke('saveOrder',{order:adapter.toFirebase(record),expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
+  const {order}=await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)});pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
+ }
+ case 'delete':await invoke('voidOrder',{posId:values[0],expectedVersion:values[1],reason:'Confirmed by employee through original POS deletion workflow'});return {ok:true,deleted:true,posId:values[0]};
+ case 'tips':return ['Select','Joyce','Renz','Joy','Lerni']; // Exact source fallback; edited workbook validation export remains blocked.
+ case 'directory':return unsupported('The original returning-customer directory import');
+ case 'historical':return unsupported('Historical sales import');
+ case 'legacyGet':case 'legacySave':return unsupported('Historical order editing');
+ case 'phLocations':return unsupported('Nationwide location lookup'); // Original province fallback and manual address entry remain available.
+ case 'proofStart':case 'proofChunk':return unsupported('Google Drive proof upload');
+ case 'framePricingGet':{
+  const cfg=await invoke('getPricing');pricingVersion=cfg.version||0;
+  // Synthetic rates are allowed only in the isolated demo emulator, never normal staging quotations.
+  return useEmulators?cfg:{rates:{},custom:{}};
+ }
+ case 'framePricingSave':{
+  if(!['owner','admin'].includes(profile.role))throw Error('Only an Owner or Admin can change pricing');
+  if(!useEmulators)return unsupported('Unverified pricing changes');
+  const cfg=await invoke('savePricing',{config:{...values[0],fixtureOnly:true},expectedVersion:pricingVersion});pricingVersion=cfg.version;return cfg;
+ }
+ case 'lateAddonLookup':{
+  const {order}=await invoke('getOrder',{frameId:values[0]});
+  const item=order.items.find(i=>i.kind==='frame'&&i.existingId===values[0]),add=item.lateLetter||item;
+  const recorded=!!item.lateLetter,closed=/SHIP|DELIVER|COMPLET|REFUND|CANCEL/i.test(item.status);
+  return {id:values[0],name:[order.first,order.last].filter(Boolean).join(' '),size:item.size,status:item.status,addOnType:add.addOnType||'',latePaymentRecorded:recorded,repairNeeded:false,editable:!closed&&!add.addOnType,viberConfigured:false,viberStatus:'DISABLED',reason:closed?'This frame is already shipped or closed.':add.addOnType?'A letter is already recorded. Do not collect another payment.':''};
+ }
+ case 'lateAddonSave':{
+  if(values[0].repairOnly||values[0].viberOnly)return unsupported('Legacy add-on repair or external notification');
+  const result=await invoke('saveLateLetter',values[0]);return {...result,frameVerified:true,viberStatus:'DISABLED',viberText:''};
+ }
+ case 'lateAddonSales':{
+  const report=await invoke('salesReport',{from:'1900-01-01',to:'2100-12-31'});
+  return report.lateLetters.map(x=>({id:x.id,date:x.paymentDate,amount:x.amount,customer:x.customer||'',email:x.email||'',staff:x.recordedBy||'',method:x.method}));
+ }
+ default:throw Error('Unsupported POS action: '+action);
+ }
 }
-function itemChange(e){const node=e.target,i=+node.dataset.item,k=node.dataset.key;workingItems[i][k]=node.type==='checkbox'?node.checked:k==='amount'?Number(node.value||0):node.value;if(k==='shippingFee')workingItems[i].shippingManual=true;if(k==='addOnType'){const it=workingItems[i];if(it.addOnType==='Personalized Letter'){it.addOnFont=it.addOnFont||'Regular';it.addOnColor=it.addOnColor||'White Gold';}else{it.addOnFont='';it.addOnColor='';it.addOnMessage='';it.addOnCommissionRecipient='';}renderItems();}calculate();}
-function calculate(){
- const subtotal=workingItems.reduce((a,x)=>a+Number(x.amount||0)+(x.kind==='frame'&&x.addOnType==='Personalized Letter'?200:0),0);
- const shipping=workingItems.filter(x=>x.kind==='frame').reduce((a,x)=>a+Number(x.shippingFee||0),0),discount=num('discount'),tip=num('tip');$('shippingFee').value=shipping;const due=Math.round((subtotal-discount+tip+shipping)*100)/100,paid=num('received');const excess=Math.max(0,Math.round((paid-due)*100)/100);
- const fields=[['Editing',workingItems.filter(x=>x.kind==='editing').reduce((a,x)=>a+Number(x.amount||0),0)],['Framing & letter add-ons',workingItems.filter(x=>x.kind==='frame').reduce((a,x)=>a+Number(x.amount||0)+(x.addOnType==='Personalized Letter'?200:0),0)],['Discount',-discount],['Tip',tip],['Shipping',shipping],['Balance to Pay',due],['Amount Received',paid],['Excess',excess]];
- $('totals').innerHTML=fields.map(([k,v])=>`<div class="total ${k==='Balance to Pay'||k==='Excess'?'emph':''}"><label>${esc(k)}</label><strong>${php(v)}</strong></div>`).join('');
-}
-function resetForm(){requestId=crypto.randomUUID();editingId=null;originalVersion=null;$('orderForm').reset();$('posId').value=newPosId();$('paymentDate').value=dateManila();$('discount').value=0;$('tip').value=0;$('shippingFee').value=0;workingItems=[];createItem('editing');$('formHeading').textContent='New Remittance';$('cancelEdit').hidden=true;$('saveBtn').textContent='Save remittance to Firebase';page('new');}
-function getForm(){
- const shipping={};for(const x of ['ship','receiverName','contactPhone','street','barangay','city','province','postal','area'])shipping[x]=input(x);shipping.notes=input('shippingNotes');
- const o={posId:input('posId'),paymentDate:input('paymentDate'),first:input('first'),last:input('last'),email:input('email'),method:input('method'),received:num('received'),discount:num('discount'),tip:num('tip'),tipRecipient:input('tipRecipient'),proofUrl:input('proofUrl'),remarks:input('remarks'),shipping,shippingFee:num('shippingFee'),items:workingItems.map(({uid,...it})=>({...it,existingId:String(it.existingId).trim().toUpperCase()}))};return o;
-}
-async function submitOrder(e){e.preventDefault();const btn=$('saveBtn');if(!workingItems.length)return toast('Add at least one service',true);const data=getForm();if(data.received<=0)return toast('Amount received must be more than zero',true);btn.disabled=true;btn.textContent='Committing to Firestore...';
- try{const result=await call('saveOrder',{order:data,expectedVersion:originalVersion,requestId});toast('POS #'+result.posId+' SYNCED · Staging notifications queued');editingId=null;originalVersion=null;await reload();page('orders');resetFormSilent();}catch(err){toast('Not confirmed: '+String(err.message||err)+'. Check orders by the same POS ID. Do not resubmit blindly.',true);}finally{btn.disabled=false;btn.textContent=editingId?'Update remittance in Firebase':'Save remittance to Firebase';}}
-function resetFormSilent(){requestId=crypto.randomUUID();editingId=null;originalVersion=null;workingItems=[];$('orderForm').reset();$('posId').value=newPosId();$('paymentDate').value=dateManila();$('discount').value=0;$('tip').value=0;$('shippingFee').value=0;createItem('editing');$('cancelEdit').hidden=true;$('formHeading').textContent='New Remittance';}
-async function editOrder(id){requestId=crypto.randomUUID();try{const {order:o}=await call('getOrder',{posId:id});if(o.voidedAt)return toast('Cannot edit voided transaction',true);editingId=id;originalVersion=o.version;for(const k of ['posId','paymentDate','first','last','email','method','received','discount','tip','tipRecipient','proofUrl','remarks','shippingFee'])$(k).value=o[k]??'';
- for(const k of ['ship','receiverName','contactPhone','street','barangay','city','province','postal','area'])$(k).value=o.shipping?.[k]||'';$('shippingNotes').value=o.shipping?.notes||'';
- workingItems=o.items.map(x=>({...x,uid:String(Math.random())}));renderItems();calculate();$('cancelEdit').hidden=false;$('formHeading').textContent='Edit POS #'+id;$('saveBtn').textContent='Update remittance in Firebase';page('new');}catch(e){toast(e.message,true);}}
-function orderRows(arr){return `<div class="table-wrap"><table class="data-table"><thead><tr><th>POS ID</th><th>Payment date</th><th>Customer</th><th>Services</th><th>Received</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody>${arr.map(o=>`<tr><td>${esc(o.posId)}</td><td>${esc(o.paymentDate)}</td><td>${esc(o.first+' '+(o.last||''))}</td><td>${esc(o.items.map(i=>i.existingId).join(', '))}</td><td>${o.received===undefined?'Restricted':php(o.received)}</td><td>${o.due===undefined?'Restricted':php(o.due)}</td><td><span class="tag ${o.voidedAt?'voided':''}">${o.voidedAt?'VOIDED':'SYNCED'}</span></td><td class="item-actions">${['owner','admin','sales'].includes(profile?.role)?`<button class="secondary" data-edit="${esc(o.posId)}">Edit</button>`:''}${['owner','admin'].includes(profile?.role)&&!o.voidedAt?`<button class="danger" data-version="${o.version}" data-void="${esc(o.posId)}">Void</button>`:''}<button class="secondary" data-notify="${esc(o.posId)}">Status</button></td></tr>`).join('')}</tbody></table></div>`||'<div class="empty">No transactions yet.</div>';}
-function bindOrderButtons(root){root.querySelectorAll('[data-void]').forEach(b=>b.onclick=async()=>{const o=orders.find(o=>o.posId===b.dataset.void);const reason=prompt('Reason for voiding POS '+b.dataset.void+' (5+ characters)');if(!reason)return;try{await call('voidOrder',{posId:b.dataset.void,expectedVersion:o?.version??Number(b.dataset.version),reason});await reload();toast('Order voided');}catch(e){toast(e.message,true);}});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editOrder(b.dataset.edit));root.querySelectorAll('[data-notify]').forEach(b=>b.onclick=()=>{page('notifications');$('notificationId').value=b.dataset.notify;checkNotifications();});}
-async function reload(){if(['owner','admin','sales','encoder'].includes(profile.role)){staff=(await call('listStaff')).staff;}$('staffOptions').innerHTML=staff.filter(s=>s.active&&s.role==='editor').map(s=>`<option value="${esc(s.uid)}">${esc(s.name)}</option>`).join('');const r=await call('listOrders',{limit:150});orders=r.orders||[];renderLists();loadDashboard();}
-function renderLists(){
- const search=input('orderSearch').toLowerCase(),filter=o=>(o.posId+' '+o.first+' '+o.last+' '+o.items.map(x=>x.existingId).join(' ')).toLowerCase().includes(search);
- $('allOrders').innerHTML=orderRows(orders.filter(filter));bindOrderButtons($('allOrders'));$('recentOrders').innerHTML=orderRows(orders.slice(0,8));bindOrderButtons($('recentOrders'));
- const editSearch=input('editingSearch').toLowerCase(),frameSearch=input('frameSearch').toLowerCase();
- const makeList=(kind,query)=>orders.filter(o=>!o.voidedAt).flatMap(o=>o.items.filter(i=>i.kind===kind&&(`${i.existingId} ${o.first} ${o.last}`).toLowerCase().includes(query)).map(i=>({o,i})));
- const renderQueue=(arr,kind)=>`<div class="table-wrap"><table class="data-table"><thead><tr><th>Order ID</th><th>Customer</th><th>Service / Size</th><th>Assigned / Receiver</th><th>Drive File</th><th>Status</th><th>Work details</th></tr></thead><tbody>${arr.map(({o,i})=>`<tr><td>${esc(i.existingId)}</td><td>${esc(o.first+' '+o.last)}</td><td>${esc(kind==='editing'?i.orderType:i.size||i.orderType)}${(i.lateLetter||i).addOnType?`<details><summary>Personalized letter</summary><p>${esc((i.lateLetter||i).addOnFont)} · ${esc((i.lateLetter||i).addOnColor)}</p><p>${esc((i.lateLetter||i).addOnMessage)}</p></details>`:''}</td><td>${esc(kind==='editing'?i.assignedTo||'Unassigned':o.shipping?.receiverName||o.first)}</td><td>${i.fileUrl||i.photoUrl?`<a target="_blank" rel="noopener noreferrer" href="${esc(i.fileUrl||i.photoUrl)}">Open Drive</a>`:'Not linked'}</td><td><select class="status-select" data-status="${esc(i.itemKey)}" data-pos="${esc(o.posId)}">${tipOptions(kind==='editing'?editStates:frameStates)}</select></td><td><button class="secondary" data-work="${esc(i.itemKey)}" data-pos="${esc(o.posId)}">Update details</button></td></tr>`).join('')}</tbody></table></div>`;
- $('editingList').innerHTML=renderQueue(makeList('editing',editSearch),'editing');$('frameList').innerHTML=renderQueue(makeList('frame',frameSearch),'frame');
- for(const root of [$('editingList'),$('frameList')]){root.querySelectorAll('[data-work]').forEach(b=>b.onclick=()=>openWork(b.dataset.pos,b.dataset.work));root.querySelectorAll('[data-status]').forEach(select=>{const current=orders.flatMap(o=>o.items).find(i=>i.itemKey===select.dataset.status);select.value=current?.status||'';select.onchange=async()=>{const next=select.value;select.disabled=true;try{await call('updateItemStatus',{posId:select.dataset.pos,itemKey:select.dataset.status,status:next,expectedVersion:orders.find(o=>o.posId===select.dataset.pos).version});toast('Status updated');await reload();}catch(e){toast(e.message,true);select.value=current?.status||'';}finally{select.disabled=false;}};});}
-}
-async function loadDashboard(){if(!profile||!['owner','admin','sales'].includes(profile.role))return;try{const d=await call('dashboard',{limit:1000});for(const [key,id] of [['salesToday','mSales'],['editingToday','mEdit'],['framingToday','mFrame'],['tipsToday','mTips'],['excessToday','mExcess']])$(id).textContent=php(d[key]);$('mOrders').textContent=d.ordersToday;}catch(e){toast(e.message,true);}}
-async function checkNotifications(){const id=input('notificationId');if(!/^\d{8}$/.test(id))return toast('Enter an 8-digit POS ID',true);$('notificationResult').textContent='Checking...';try{const d=await call('notificationStatus',{posId:id});$('notificationResult').innerHTML=d.notifications.map(n=>`<article class="notification-card"><b>${esc(n.type)} — ${esc(n.status)}</b><small>${esc(n.detail||'')} ${n.sentAt?'Accepted: '+esc(n.sentAt):''}</small>${n.preview?`<pre>${esc(n.preview.text||n.preview.subject||'Simulated customer receipt')}</pre>`:''}${n.status==='NOT_DELIVERED'&&['owner','admin'].includes(profile.role)?`<button data-retry="${esc(n.eventId)}">Retry confirmed non-delivery</button>`:''}</article>`).join('');$('notificationResult').querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{try{await call('retryNotification',{eventId:b.dataset.retry});await checkNotifications();}catch(e){toast(e.message,true);}});}catch(e){$('notificationResult').textContent=e.message;}}
-function exportCsv(){const heads=['POS ID','Payment Date','Customer','Email','Amount Received','Amount Due','Editing Paid','Framing Paid','Discount','Tips','Excess','Payment Method','Services','Status'];const rows=orders.map(o=>[o.posId,o.paymentDate,o.first+' '+o.last,o.email||'',o.received,o.due,o.editPaid,o.framePaid,o.discount,o.tip,o.excess,o.method,o.items.map(i=>i.kind+':'+i.existingId).join(';'),o.voidedAt?'VOIDED':'SYNCED']);const csv=[heads,...rows].map(row=>row.map(x=>'"'+String(/^[=+@\t\r-]/.test(String(x??''))?"'"+x:x??'').replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='rocketfix-firebase-sales-'+dateManila()+'.csv';a.click();URL.revokeObjectURL(url);}
-function bootUI(){document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>page(b.dataset.go));$('addEditing').onclick=()=>createItem('editing');$('addFrame').onclick=()=>createItem('frame');$('resetForm').onclick=()=>{if(confirm('Discard unsaved form edits?'))resetForm();};$('cancelEdit').onclick=resetForm;$('orderForm').onsubmit=submitOrder;['received','discount','tip','shippingFee'].forEach(id=>$(id).addEventListener('input',calculate));$('refresh').onclick=async()=>{try{await reload();toast('Firebase records refreshed')}catch(e){toast(e.message,true)}};for(const id of ['orderSearch','editingSearch','frameSearch'])$(id).addEventListener('input',renderLists);$('csvExport').onclick=exportCsv;$('checkNotification').onclick=checkNotifications;$('logout').onclick=()=>signOut(auth);$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{await signInWithEmailAndPassword(auth,input('loginEmail'),input('loginPassword'));}catch(err){$('loginError').textContent=err.message;}};resetFormSilent();}
-async function serverQuote(){
- const {order}=await call('quote',{order:getForm()});
- workingItems=order.items.map((it,i)=>({...it,uid:workingItems[i].uid}));$('shippingFee').value=order.shippingFee;renderItems();calculate();toast(workingItems.some(i=>i.kind==='frame')?'Unverified staging fixture quote applied':'Server quote applied');
-}
-async function loadSettings(){try{
- pricing=await call('getPricing');$('fixtureOnly').checked=pricing.fixtureOnly===true;staff=(await call('listStaff')).staff;
- const fields=[];
- for(const kind of ['framed','print','canvas'])for(const key of ['Rate','Base','Minimum','MinWidth','MaxWidth','MinHeight','MaxHeight']){
- const id=kind+key;fields.push(`<label>${esc(kind+' '+key)}<input type="number" min="0" step=".01" data-custom="${id}" value="${esc(pricing.custom?.[id]??'')}"/></label>`);}
- for(const area of ['Luzon','Visayas','Mindanao'])for(const tier of ['Small','Medium','Large','XL']){
- const id=area+'|'+tier;fields.push(`<label>${esc(id)} freight<input type="number" min="0" step=".01" data-rate="${id}" value="${esc(pricing.rates?.[id]?.rate??'')}"/></label><label>${esc(id)} delivery days<input data-days="${id}" value="${esc(pricing.rates?.[id]?.days||'')}"/></label>`);}
- $('pricingFields').innerHTML=fields.join('');$('staffList').innerHTML=staff.map(s=>`<p>${esc(s.name)} · ${esc(s.role)} · ${s.active?'Active':'Inactive'} · ${esc(s.uid)}</p>`).join('');$('staffForm').hidden=profile.role!=='owner';
- }catch(e){toast(e.message,true);}}
-async function loadReports(){try{
- const range={from:input('reportFrom'),to:input('reportTo')};
- const [sales,earnings]=await Promise.all([call('salesReport',range),call('earningsReport',range)]);
- $('reportResult').innerHTML=`<p>${esc(sales.note)}</p><p>${sales.totals.orders} orders · Sales ${php(sales.totals.sales)} · Tips ${php(sales.totals.tips)} · Excess ${php(sales.totals.excess)} · Late letters ${php(sales.totals.lateLetters)}</p>`+orderRows(sales.orders)+`<h4>Employee earnings ${php(earnings.total)}</h4>`+earnings.rows.map(e=>`<p>${esc(e.employee)} · ${esc(e.type)} · ${php(e.amount)} · ${esc(e.paymentDate)}</p>`).join('');bindOrderButtons($('reportResult'));
- }catch(e){toast(e.message,true);}}
-function openWork(posId,itemKey){const o=orders.find(o=>o.posId===posId),i=o.items.find(i=>i.itemKey===itemKey);
- $('workPos').value=posId;$('workKey').value=itemKey;$('workDialog').dataset.version=o.version;
- $('workStatus').innerHTML=tipOptions(i.kind==='editing'?editStates:frameStates);$('workStatus').value=i.status;
- $('workUrl').value=(i.kind==='editing'?i.fileUrl:i.mockupUrl)||'';$('workTracking').value=i.trackingNumber||'';$('workAssigned').value=i.assignedTo||'';
- $('workAssigned').disabled=i.kind!=='editing'||!['owner','admin','encoder'].includes(profile.role);$('workTracking').disabled=i.kind!=='frame';$('workDialog').showModal();
-}
-function bindWorkflows(){
- for(const id of ['reportFrom','reportTo','lateDate'])$(id).value=dateManila();
- $('lateEmployee').innerHTML=tipOptions(['',...letterStaff]);
- $('quoteOrder').onclick=()=>serverQuote().catch(e=>toast(e.message,true));$('loadReports').onclick=loadReports;
- $('pricingForm').onsubmit=async e=>{e.preventDefault();try{const config={custom:{},rates:{},fixtureOnly:$('fixtureOnly').checked};
- document.querySelectorAll('[data-custom]').forEach(n=>config.custom[n.dataset.custom]=n.value);
- document.querySelectorAll('[data-rate]').forEach(n=>config.rates[n.dataset.rate]={rate:n.value,days:document.querySelector(`[data-days="${n.dataset.rate}"]`).value});
- pricing=await call('savePricing',{config,expectedVersion:pricing.version||0});toast('Pricing saved');}catch(err){toast(err.message,true);}};
- $('staffForm').onsubmit=async e=>{e.preventDefault();try{await call('setStaff',{uid:input('staffUid'),name:input('staffName'),role:input('staffRole'),active:$('staffActive').checked});await loadSettings();toast('Membership saved');}catch(err){toast(err.message,true);}};
- $('workClose').onclick=()=>$('workDialog').close();
- $('workForm').onsubmit=async e=>{e.preventDefault();try{
- const posId=input('workPos'),itemKey=input('workKey'),i=orders.find(o=>o.posId===posId).items.find(i=>i.itemKey===itemKey);
- const data={posId,itemKey,status:input('workStatus'),expectedVersion:Number($('workDialog').dataset.version)};
- if(i.kind==='editing'){data.fileUrl=input('workUrl');if(!$('workAssigned').disabled)data.assignedTo=input('workAssigned');}else{data.mockupUrl=input('workUrl');data.trackingNumber=input('workTracking');}
- await call('updateItemStatus',data);$('workDialog').close();await reload();toast('Work details saved');}catch(err){toast(err.message,true);}};
- $('lateForm').onsubmit=async e=>{e.preventDefault();try{const result=await call('saveLateLetter',{id:input('lateId'),paymentDate:input('lateDate'),method:input('lateMethod'),paymentRef:input('lateRef'),font:input('lateFont'),color:input('lateColor'),message:$('lateMessage').value,commissionEmployee:input('lateEmployee'),confirmation:input('lateConfirm')});toast(result.alreadyRecorded?'Payment already recorded; no second charge':'Late letter recorded in staging');await reload();}catch(err){toast(err.message,true);}};
-}
-bindWorkflows();
-bootUI();
-if(firebaseConfig.apiKey.startsWith('REPLACE_')){$('loginError').textContent='Setup required: update public/config.js with your Firebase Web App config.';}
-else{
- if(useEmulators&&(!['127.0.0.1','localhost'].includes(location.hostname)||firebaseConfig.projectId!=='demo-rocketfix-360'))throw Error('Staging app requires local demo emulators');
- if(!useEmulators&&!['web.app','firebaseapp.com'].some(domain=>location.hostname===firebaseConfig.projectId+'.'+domain))throw Error('Staging hosting target mismatch');
- const app=initializeApp(firebaseConfig);auth=getAuth(app);if(useEmulators)connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});functions=getFunctions(app,functionsRegion);if(useEmulators)connectFunctionsEmulator(functions,'127.0.0.1',5001);
- onAuthStateChanged(auth,async user=>{
-  if(!user){profile=null;orders=[];staff=[];for(const id of ['reportResult','staffList','notificationResult'])$(id).textContent='';renderLists();resetFormSilent();$('workspace').hidden=true;$('login').hidden=false;return;}
-  try{const result=await call('myAccess');if(!result.role)throw Error('Account is not yet authorized. Create staff/'+user.uid+' with role and active:true.');profile=result;$('profile').textContent=result.name+' · '+result.role.toUpperCase();$('login').hidden=true;$('workspace').hidden=false;
-   document.querySelector('[data-page="settings"]').hidden=!['owner','admin'].includes(result.role);document.querySelector('[data-page="reports"]').hidden=!['owner','admin','sales'].includes(result.role);
-   if(!['owner','admin','sales'].includes(result.role)){document.querySelector('[data-page="new"]').hidden=true;document.querySelector('[data-page="dashboard"]').hidden=true;document.querySelector('[data-page="notifications"]').hidden=true;page('editing');}else{for(const name of ['new','dashboard','notifications'])document.querySelector(`[data-page="${name}"]`).hidden=false;page('dashboard');}
-   await reload();}catch(e){$('loginError').textContent=String(e.message||e);$('login').hidden=false;$('workspace').hidden=true;}
- });
-}
+window.google={script:{run:adapter.runner(dispatch)}};
+window.firebasePOS={
+ signIn:async(email,password)=>signInWithEmailAndPassword(auth,email,password),
+ signOut:async()=>{await signOut(auth);location.reload();},
+ isDemo:useEmulators
+};
+onAuthStateChanged(auth,async user=>{
+ try{
+  profile=null;
+  if(!user){window.rfFirebaseSession(null);return;}
+  const access=await invoke('myAccess');
+  if(!['owner','admin','sales'].includes(access.role))throw Error('This Admin POS requires an active Owner, Admin, or Sales role.');
+  profile=access;window.rfFirebaseSession(access);
+ }catch(error){window.rfFirebaseSession(null,error.message);}
+});

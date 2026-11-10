@@ -10,4 +10,8 @@ function assertStagingOrder(order,env=process.env){
  if(order?.environment&&order.environment!=='staging')throw Error('Production orders are disabled; staging only');
  if(order?.productionEligible===true)throw Error('UNVERIFIED_FIXTURE pricing cannot be approved for production');
 }
-module.exports={assertStaging,assertStagingOrder};
+function assertFinancialTesting(env=process.env){
+ if(env.FUNCTIONS_EMULATOR==='true'&&env.GCLOUD_PROJECT==='demo-rocketfix-360')return;
+ throw Error('Financial changes are blocked while original POS business-rule parity is under review. Use local sample orders only.');
+}
+module.exports={assertStaging,assertStagingOrder,assertFinancialTesting};

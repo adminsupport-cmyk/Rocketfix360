@@ -1,0 +1,91 @@
+{
+  "project": "rocketfix-360-staging",
+  "mode": "no-invoker-iam-check",
+  "effectivePolicies": [
+    {
+      "constraint": "constraints/run.managed.requireInvokerIam",
+      "booleanPolicy": {}
+    },
+    {
+      "constraint": "constraints/run.requireInvokerIam",
+      "notFound": true
+    }
+  ],
+  "callables": [
+    {
+      "name": "myAccess",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "listOrders",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "getOrder",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "saveOrder",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "updateItemStatus",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "voidOrder",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "dashboard",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "notificationStatus",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "retryNotification",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "getPricing",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "savePricing",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "quote",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "listStaff",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "setStaff",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "earningsReport",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "salesReport",
+      "invokerIamDisabled": true
+    },
+    {
+      "name": "saveLateLetter",
+      "invokerIamDisabled": true
+    }
+  ],
+  "outbox": {
+    "name": "deliverOutbox",
+    "private": true,
+    "invokerIamDisabled": false,
+    "database": "rocketfix360database"
+  },
+  "iamGrantsChanged": false
+}

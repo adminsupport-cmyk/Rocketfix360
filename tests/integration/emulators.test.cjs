@@ -59,6 +59,15 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  if(role==='editor')assert.ok(o.items.every(i=>i.kind==='editing'&&i.assignedTo==='test-editor'));if(role==='production')assert.ok(o.items.every(i=>i.kind==='frame'));
  }
  });
+ await t.test('history pagination is stable and frame lookup retains role projections',async()=>{
+ const first=await call('listOrders',{limit:1});assert.equal(first.orders.length,1);assert.ok(first.nextCursor);
+ const second=await call('listOrders',{limit:1,cursor:first.nextCursor});assert.equal(second.orders.length,1);assert.notEqual(first.orders[0].posId,second.orders[0].posId);
+ const uncommitted=await call('getOrder',{posId:base.posId,requestId:'request-not-yet-committed'});assert.equal(uncommitted.requestCommitted,false);
+ const committed=await call('getOrder',{posId:base.posId,requestId:'request-'+base.posId+'-initial'});assert.equal(committed.requestCommitted,true);assert.equal(committed.order.version,1);
+ const located=await call('getOrder',{frameId:'AB1C2'});assert.equal(located.order.posId,base.posId);
+ const restricted=await call('getOrder',{frameId:'AB1C2'},'production');assert.equal(restricted.order.received,undefined);assert.ok(restricted.order.items.every(i=>i.kind==='frame'));
+ assert.equal((await call('listOrders',{},'editor')).nextCursor,null);await assert.rejects(call('listOrders',{cursor:first.nextCursor},'editor'),/financial access/);
+ });
  await t.test('direct Firestore client reads and writes denied',async()=>{
  const url='http://127.0.0.1:8080/v1/projects/demo-rocketfix-360/databases/rocketfix360database/documents/orders/'+base.posId;
  for(const method of ['GET','PATCH']){const r=await fetch(url,{method,headers:{Authorization:'Bearer '+tokens.owner,'Content-Type':'application/json'},...(method==='PATCH'?{body:JSON.stringify({fields:{first:{stringValue:'Attack'}}})}:{})});assert.equal(r.status,403);}

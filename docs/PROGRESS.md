@@ -1,3 +1,15 @@
+# Original Admin POS parity rebuild — November 10, 2026
+
+Branch: `feature/original-admin-pos-parity`, based on `staging/firebase-pos-fast-track` (`7e554b7`). Main and recovery references preserved. Original HTML/CSS now forms the Firebase interface; original reference files unchanged. Source mapping, immutable hashes and local dependency candidates are in [parity/SOURCE-MAP.md](parity/SOURCE-MAP.md).
+
+Actual validation: **42 unit tests and 19 complete emulator test records pass**; syntax/build/source-presence checks pass. Browser tests pass for Owner login, editing/frame/combined sample receipts, versioned edits, a deliberately lost payment response without resubmission, receipt modal, history and daily sales. Original CSS and controls preserved; desktop and both iPad orientations match form geometry. Six [screenshot comparisons](parity/screenshots/desktop-comparison.png) are saved. This does not establish complete pixel or business-rule parity.
+
+Staging deployment targets only `rocketfix-360-staging` / existing `rocketfix360database`. Financial writes and customer quotations are server-blocked outside the isolated local demo pending parity approval. No real financial transactions were made. External sending remains OFF; outbox private; original production Firebase and Google Sheets untouched. Exact payment-request receipts prevent an old order version from falsely confirming an interrupted edit. Full [validation and blockers](parity/VALIDATION.md), [deployed asset/authentication checks](parity/DEPLOYED-CHECKS.json), and [invoker privacy audit](parity/INVOKER-CHECKS.json).
+
+Remaining: approved current pricing/configuration and manual override policy; reconciled historical/customer/loyalty exports and Firebase port; authorized staging Drive uploads; complete source-version/permissions/status parity; short legacy IDs and operational queue UI; remaining report/modal visual comparisons and deployed Owner acceptance. Newly found local scripts are preserved as candidates, not described as missing or approved. **Not production-ready; full parity incomplete.**
+
+---
+
 # Invoker policy resolved — November 10, 2026
 
 Configured all 17 deployed HTTPS callable services in `rocketfix-360-staging` with Google's documented `run.googleapis.com/invoker-iam-disabled: true` setting (equivalent to `gcloud run services update --no-invoker-iam-check`). The managed requireInvokerIam constraint is not enforced; the legacy constraint was not found. Domain Restricted Sharing is unchanged. No allUsers IAM grants or organization-policy changes were made. The v1 annotation update avoids a managed-function revision-name conflict observed with the v2 field patch.

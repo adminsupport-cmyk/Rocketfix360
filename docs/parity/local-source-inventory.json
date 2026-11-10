@@ -1,0 +1,272 @@
+[
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v7_1_Template_Check_Fix.gs",
+    "sha256": "a393254a807ece16016130a85a906c848867ac49a96e8b822cbfda2255bdbca3",
+    "bytes": 18403
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_AUG1_BATCHED.gs",
+    "sha256": "f68cd0b69af9e5c567116e3bffe620db8852b7432a2468aea219ebd244a0e8a7",
+    "bytes": 62280
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_AUG1_TO_TODAY.gs",
+    "sha256": "07f09ab735d37261e7fd5295d0c66b6656845ae2fb0bd26e580c54a02a9cbef6",
+    "bytes": 57234
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_NO_TAT.gs",
+    "sha256": "b07f6563cc46cb260a02f5828f629e33e5bcfebc40379feb6780bdb341aa2f55",
+    "bytes": 56514
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Emailer_Diagnostic_Read_Only.gs",
+    "sha256": "da25bfaa339783575b848f93413469121f4b7e045d606b9129232d97eec6032c",
+    "bytes": 3007
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer.gs",
+    "sha256": "72698a0a82726e8fcc01330cf0104da8b8bd97ca58464fbab463d8a4dafdb890",
+    "bytes": 56510
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_TransactionMailer_V4_POS_ID_Compatible.gs",
+    "sha256": "566cdcc1e6ed295cade7ebe0816fc50544bf05d58164f9f8a1f4aa7198c9eb9e",
+    "bytes": 66971
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Private_Emailer_V9_Email_Edit_Resend.gs",
+    "sha256": "a9458479e3ca336fa37069e67b6b9e5e3e095fe11a2c95e124c2cbd5ed5fdd09",
+    "bytes": 19851
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_AUG1_VISIBLE_STATUS.gs",
+    "sha256": "ae602428c14577882262b237210ffaa59d19fc481408008ee1669efb6cca031e",
+    "bytes": 63039
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v6_Track_ID_Links.gs",
+    "sha256": "31834c9f3e1241d225e47b01505d268f7f742a0cd26a232cb7fe7676d05c401c",
+    "bytes": 17098
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Emailer_No_Gemini.gs",
+    "sha256": "5bd112e9a35746be690b40c2d5425de0f21415e36e801a58455c7f472b36aacb",
+    "bytes": 26136
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Emailer_FINAL_No_Gemini.gs",
+    "sha256": "ec8599b084a6dfa4541388db559ae760281e6f431e5c68cd5128ea0693c1fad1",
+    "bytes": 26143
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v7_Automatic_Tracking.gs",
+    "sha256": "a82d0b2b586075ce70f7f94a7af46109fd9cd25839f3343927244dc63c6777e1",
+    "bytes": 18382
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v2_Visible_Copy_Icon.gs",
+    "sha256": "22628928dacffdce891fdcd51a6c8495f5aad8b9ce0bd590511197c1a6cd2005",
+    "bytes": 15520
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Emailer_No_Gemini (1).gs",
+    "sha256": "5bd112e9a35746be690b40c2d5425de0f21415e36e801a58455c7f472b36aacb",
+    "bytes": 26136
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_FIXED_STAMP_CARDS.gs",
+    "sha256": "844145114f2875cc2eb63073f518ad6588e4251af8d619997c325a429decf787",
+    "bytes": 57248
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Emailer_ONLY_Gemini_Removed.gs",
+    "sha256": "61d91a36cd4c3de77841a5b4e9b3babb6e3430b922dfe75dfe938d1e7cc6648a",
+    "bytes": 21317
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Emailer_V8_Short_Lock.gs",
+    "sha256": "5aeb5ead04243d3cd8c8cdf9ee2ff6c31cb620576160b44fa71f1b8b6912693a",
+    "bytes": 19039
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v5_Deep_Green_Logo_Header.gs",
+    "sha256": "ac5c6dc63f37b6eb62ff1b714e142fe7734eeca23de4761517a6632dce0e9fd3",
+    "bytes": 16747
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Viber_Channel_AppsScript_Webhook.gs",
+    "sha256": "22d72d1e648a6f754e99638c5b255840266906c5dbd71db856a503fa8ef2fc29",
+    "bytes": 1291
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_DeviceAccess_iPad_Response_Reconciliation_V1.gs",
+    "sha256": "2c92e7575fd184b3b305ef47202d465ee6124a1b8d42038ddf096ad513d719b1",
+    "bytes": 5348
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/TransactionMailer_FULL_NAME_SUBJECT.gs",
+    "sha256": "6d29af314f7ad6d6da5a6a29125d303981208212da11856009622fa8f37e5928",
+    "bytes": 57274
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_ConfirmationEmailer_v3_Mobile_Logo_Fix.gs",
+    "sha256": "7a2a126e9db13ba2c677697c91f17406dee60a641ed8b1dd47cc70da5b487a55",
+    "bytes": 16750
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/RF_MAILER_LOCK_CONFLICT_FIX_V2/TransactionMailer_FULL_REPLACEMENT.gs",
+    "sha256": "e6e0b591441ab45ba3b9924d3019cc099fe5e5b239bf4aa90bada4bead21f0a8",
+    "bytes": 65138
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Bulk_Emailer_Apps_Script/RF_BulkEmailer.gs",
+    "sha256": "6971d0c103312ee4ceee4823904b2266bb84db6754861feb16ee562860bd0fbe",
+    "bytes": 10839
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_5_Flexible_ID_Viber_Report 2/DeviceAccess.gs",
+    "sha256": "882cee64befada13392e916e9820c63051714e4c9ff6082bf305f26e564a4359",
+    "bytes": 7264
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V14_Three_Product_Limits/FramePricing.gs",
+    "sha256": "54e67e9c65fd0a16a8767d76bd203dbec9d2aacf1481e61717ec482dcef52946",
+    "bytes": 9847
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V12_Shipping_Custom_Sizes/DeviceAccess.gs",
+    "sha256": "6dedfa9abae5ced3bc696ccf5c92cd7a105fe3d4c19b4da86bc1877d16c3accb",
+    "bytes": 5505
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V12_Shipping_Custom_Sizes/FramePricing.gs",
+    "sha256": "a89312f3bdf27e51a643ef03fcbce4df1535294b34ccc964403f5940c4959d05",
+    "bytes": 5928
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Registered_Device_Access_STAGING (1)/DeviceAccess.gs",
+    "sha256": "e0039e4ecd44d1efdaa539fbe982f7c251f5ea4a80b979131240cf68d475cc3d",
+    "bytes": 4524
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Bulk_Emailer_V2_Queue_Tracking/RF_BulkEmailer.gs",
+    "sha256": "4be06e1f6df798b8621d1dc9f12fa6a89322b95dbb94f497a658a5d7dc2c2e3e",
+    "bytes": 13747
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Branded_Confirmation_Emailer_v1/Rocketfix_POS_ConfirmationEmailer_v1.gs",
+    "sha256": "ad3d41def9c7a58a2474c385c9d30c8442f0c91dcf51b2498c785b6dcd4c6b5a",
+    "bytes": 14669
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Frame_Status_Emailer_V2_Cloudinary_Logo/Rocketfix_Frame_Status_Emailer_V2.gs",
+    "sha256": "7b5600348ccc89064e81827d9057aeb5ca96a8b64d71d456617e8fcd919d876b",
+    "bytes": 13818
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_4_Late_Addon_Lookup/DeviceAccess.gs",
+    "sha256": "882cee64befada13392e916e9820c63051714e4c9ff6082bf305f26e564a4359",
+    "bytes": 7264
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_5_Flexible_ID_Viber_Report/DeviceAccess.gs",
+    "sha256": "882cee64befada13392e916e9820c63051714e4c9ff6082bf305f26e564a4359",
+    "bytes": 7264
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_7_Live_Update_Notification 2/FramePricing.gs",
+    "sha256": "1dc364a3f242adfcc3811a56076426954a4b336e668f125ccb2f323111cf7fd2",
+    "bytes": 10146
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_1_Signin_Recovery/DeviceAccess.gs",
+    "sha256": "3f5ceecf2f56689434b00fb31bc56042d0730e5877b969277e2a2766d871c8f5",
+    "bytes": 4811
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_6_New_Day_Viber_Divider (1)/FramePricing.gs",
+    "sha256": "1dc364a3f242adfcc3811a56076426954a4b336e668f125ccb2f323111cf7fd2",
+    "bytes": 10146
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V14_1_Uncapped_Dimensions/FramePricing.gs",
+    "sha256": "9d536155f81430a8b77974dae7433ed05e8d6eacad8fa699044efd71d503de92",
+    "bytes": 9928
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Master_Email_POS_Compatible_V7_V4/Rocketfix_TransactionMailer_V4_POS_ID_Compatible.gs",
+    "sha256": "566cdcc1e6ed295cade7ebe0816fc50544bf05d58164f9f8a1f4aa7198c9eb9e",
+    "bytes": 66971
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_7_Live_Update_Notification/FramePricing.gs",
+    "sha256": "1dc364a3f242adfcc3811a56076426954a4b336e668f125ccb2f323111cf7fd2",
+    "bytes": 10146
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_4_Per_Frame_Shipping (1)/FramePricing.gs",
+    "sha256": "38fd1bf87205d6baa1d355fbb0171492cf00e850f2809d38c247364c8076c986",
+    "bytes": 10076
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V14_2_Excess_Compact_UI_Delete_Fix/FramePricing.gs",
+    "sha256": "9d536155f81430a8b77974dae7433ed05e8d6eacad8fa699044efd71d503de92",
+    "bytes": 9928
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Bulk_Emailer_Business_Sender_Updated/RF_BulkEmailer.gs",
+    "sha256": "0cd17d8e758aa1f11b04ee7ef23243220c4a09f0359b169aa7348e9887c035a5",
+    "bytes": 11627
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V12_Shipping_Custom_Sizes 2/DeviceAccess.gs",
+    "sha256": "6dedfa9abae5ced3bc696ccf5c92cd7a105fe3d4c19b4da86bc1877d16c3accb",
+    "bytes": 5505
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V12_Shipping_Custom_Sizes 2/FramePricing.gs",
+    "sha256": "a89312f3bdf27e51a643ef03fcbce4df1535294b34ccc964403f5940c4959d05",
+    "bytes": 5928
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Viber_Channel_Setup_v1/Rocketfix_POS_Viber_Channel_v1.gs",
+    "sha256": "6a805a0cc612906c8fe65f71908ac2508eaa1cc7cdba62ddc25d72c4c4be7b77",
+    "bytes": 9865
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_0_24_Hour_Staff_Signin/DeviceAccess.gs",
+    "sha256": "3f5ceecf2f56689434b00fb31bc56042d0730e5877b969277e2a2766d871c8f5",
+    "bytes": 4811
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_Registered_Device_Access_STAGING/DeviceAccess.gs",
+    "sha256": "e0039e4ecd44d1efdaa539fbe982f7c251f5ea4a80b979131240cf68d475cc3d",
+    "bytes": 4524
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V13_Smart_PH_Locations/DeviceAccess.gs",
+    "sha256": "836f69b4c4fcd064d82f91dd8fe14e44914b2ee8def023aacbf1af4ac0eaa9af",
+    "bytes": 5577
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_POS_V13_Smart_PH_Locations/FramePricing.gs",
+    "sha256": "f1343550c59a7ad6c8b674d508724b416d4c246f337673468995dfd54efa3b5d",
+    "bytes": 6122
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Email_Tracking_POS_ID_Fix_Package/Rocketfix_TransactionMailer_POS_ID_Fix.gs",
+    "sha256": "bcdda969ff2c59ebd9597f82f27b2ccfde0174ab4fdda7352f7e67cc6a5a75b9",
+    "bytes": 65395
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V16_3_Shared_PIN_24h/DeviceAccess.gs",
+    "sha256": "eb363356c272122e9735bf7959e580477c1aafe703f28de6c7d5760af6b08824",
+    "bytes": 7078
+  },
+  {
+    "path": "/Users/joshuacrisostomo/Downloads/Rocketfix_Admin_POS_V14_5_NA_Single_Word (1)/FramePricing.gs",
+    "sha256": "1dc364a3f242adfcc3811a56076426954a4b336e668f125ccb2f323111cf7fd2",
+    "bytes": 10146
+  }
+]
