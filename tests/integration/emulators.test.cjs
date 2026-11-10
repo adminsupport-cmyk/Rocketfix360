@@ -173,6 +173,16 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  const outcomes=await Promise.allSettled([api.sync(args,actor),api.sync(args,actor)]);assert.ok(outcomes.some(x=>x.status==='fulfilled'&&x.value.status==='MIRRORED'));assert.equal(writes,1);assert.equal((await api.sync(args,actor)).replayed,true);assert.equal(writes,1);
  assert.deepEqual((await db.doc('orders/'+testPos).get()).data(),before);assert.equal((await db.collection('notificationOutbox').where('posId','==',testPos).get()).size,notices);
  });
+ await t.test('approved live REMIT routing preserves roles, atomic claims and payment; emulators cannot contact live Sheets',async()=>{
+ const order={posId:'55441122',paymentDate:'2025-01-01',first:'Emulator real editing path',email:'N/A',method:'Cash',received:100,stagingTest:false,paymentMode:'AGREED_EDITING_V1',items:[{kind:'editing',existingId:'RF55441A',amount:100}]};
+ const saved=await call('saveOrder',{order,requestId:'live-remit-emulator-55441122'}),key=saved.record.items[0].itemKey;
+ await assert.rejects(call('previewRemitMirror',{posId:order.posId,itemKey:key},'sales'),{code:'PERMISSION_DENIED'});
+ await assert.rejects(call('previewRemitMirror',{posId:order.posId,itemKey:key}),/REMIT_EMULATOR_EXTERNAL_ACCESS_DISABLED/);
+ const before=(await db.doc('orders/'+order.posId).get()).data(),count=(await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size;let written=false,writes=0;
+ const live=require('../../functions/live-remit'),api=live.createLiveRemit(db,{transport:{inspect:async()=>({row:10001,action:written?'UPDATE':'CREATE',matches:written,spreadsheetId:live.cfg.spreadsheetId,sheetId:live.cfg.sheetId}),write:async(p,row)=>{assert.equal(p.cells[16],order.posId);writes++;written=true;return {row};}}}),actor={uid:'test-owner',role:'owner'};
+ const preview=await api.preview({posId:order.posId,itemKey:key},actor);assert.equal(preview.testOnly,false);const args={posId:order.posId,itemKey:key,expectedVersion:1,confirmationToken:preview.confirmationToken};const result=await Promise.allSettled([api.sync(args,actor),api.sync(args,actor)]);assert.ok(result.some(r=>r.status==='fulfilled'&&r.value.status==='MIRRORED'));assert.equal((await api.sync(args,actor)).replayed,true);assert.equal(writes,1);
+ const status=await call('remitMirrorStatuses',{posIds:[order.posId]});assert.equal(status.records[0].spreadsheetId,live.cfg.spreadsheetId);assert.deepEqual((await db.doc('orders/'+order.posId).get()).data(),before);assert.equal((await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size,count);
+ });
  await t.test('hosting serves compiled staging application',async()=>{
  const r=await fetch('http://127.0.0.1:5050');assert.ok(r.ok);assert.match(await r.text(),/app.bundle.js/);const js=await fetch('http://127.0.0.1:5050/app.bundle.js');assert.ok(js.ok);assert.match(await js.text(),/connectAuthEmulator/);
  });

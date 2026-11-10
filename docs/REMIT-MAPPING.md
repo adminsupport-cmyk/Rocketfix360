@@ -1,3 +1,11 @@
+# Current destination authorization — November 11, 2026
+
+Real confirmed agreed-price editing orders now use Owner/Admin manual mirroring to **ROCKETFIX - MASTER SHEET 2025 / REMIT**, spreadsheet `10W8zrKf9rX-BFH2VLDyj8dwNlVJDca2_yArN9eIyNwY`, GID `1830742337`. The Owner explicitly approved this destination and mirroring POS 64088235; verified append was row 10001 after prior row 10000. New real rows go after the last order, with POS/item identity checks preventing duplicates and unrelated/historical rows protected. The same column mapping below applies, including column O for the private proof link.
+
+Fictional orders still use `1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc` / test REMIT, and are rejected by the live validator. Live framing, other workbooks/tabs, automatic Sheets writes, production Firebase deployment and real-order Viber delivery are not enabled by this authorization. The historical test-only notes below describe the prior rollout and remain as test evidence.
+
+---
+
 # Manual editing mirror — TEST ONLY
 
 Destination: `ROCKETFIX360 - MASTER TEST`, REMIT row 5 headers, data rows 6–10628. Only the server-configured test spreadsheet and sheet GID are permitted. The production Master and Frame workbook IDs are explicitly denied. No automatic mirroring or Tracking/Orders writes.

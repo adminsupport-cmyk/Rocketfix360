@@ -289,7 +289,7 @@ exports.mirrorOutbox=onDocumentCreated({database:'rocketfix360database',document
 exports.integrationStatus=call(['owner','admin'],async()=>{
  const [mirrors,notifications,remit]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('remitSyncLedger').orderBy('updatedAt','desc').limit(100).get()]);
  const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
- return {remit:remit.docs.map(d=>{const l=d.data();return {eventId:d.id,type:'REMIT',posId:l.posId,status:l.status,attempts:l.attempts||0,errorCode:l.lastError||'',row:l.row||null,version:l.lastSyncedVersion||0};}),sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),remitDestination:{label:'ROCKETFIX360 - MASTER TEST / REMIT',testOnly:true},sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
+ return {remit:remit.docs.map(d=>{const l=d.data();return {eventId:d.id,type:'REMIT',posId:l.posId,status:l.status,attempts:l.attempts||0,errorCode:l.lastError||'',row:l.row||null,version:l.lastSyncedVersion||0,testOnly:l.spreadsheetId===require('./remit-config.json').spreadsheetId};}),sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),remitDestination:{label:require('./remit-live-config.json').destinationLabel,testOnly:false,spreadsheetId:require('./remit-live-config.json').spreadsheetId,sheetId:1830742337},sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
 });
 exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  if(!/^[0-9]{8}_SHEETS_[0-9]+$/.test(String(eventId)))throw Error('Invalid mirror event');
@@ -300,8 +300,9 @@ exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  await processMirror(db,ref,sheetsTransport);return {ok:true};
 });
 // Manual editing-only TEST REMIT synchronization; no automatic event trigger.
-const manualRemit=require('./manual-remit').createManualRemit(db);
-exports.previewRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.preview(data,actor));
-exports.syncRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.sync(data,actor));
-exports.reconcileRemitMirror=call(['owner','admin'],async (data,actor)=>manualRemit.reconcile(data,actor));
+const manualRemit=require('./manual-remit').createManualRemit(db),liveRemit=require('./live-remit').createLiveRemit(db);
+async function remitFor(data){if(!/^\d{8}$/.test(String(data.posId||'')))throw Error('Invalid POS ID');const o=(await db.doc('orders/'+data.posId).get()).data();if(!o)throw Error('Saved Firebase order not found');return o.stagingTest===true?manualRemit:liveRemit;}
+exports.previewRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).preview(data,actor));
+exports.syncRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).sync(data,actor));
+exports.reconcileRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).reconcile(data,actor));
 exports.remitMirrorStatuses=call(['owner','admin'],async (data,actor)=>manualRemit.statuses(data,actor));
