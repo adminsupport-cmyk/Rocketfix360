@@ -1,0 +1,11 @@
+REPO: https://github.com/adminsupport-cmyk/Rocketfix360
+IMPORTANT: Only upload to main if this is the intended staging repository. Do NOT deploy or connect to production credentials.
+
+1. Extract Rocketfix360_GitHub_Complete.zip.
+2. In the Rocketfix360 GitHub repository, choose Add file > Upload files.
+3. Drag the CONTENTS of this extracted folder (not the outer folder) into GitHub, including all five source folders and package.json.
+4. If GitHub asks about replacing README.md, firebase.json, firestore.rules, firestore.indexes.json, verify these are your intended staging copies. Don't replace live production settings.
+5. Commit directly to main (if allowed) or create a branch/PR and merge after review.
+6. Ask Codex to pull latest main and run: npm run audit:sources && npm test && npm run check
+
+NOTE: The package contains the complete 16-file Firebase POS starter, not a production-ready full implementation. Exact framing pricing, shipping formulas, real SMTP/Viber tests, Firebase emulator integration tests and business parity are still incomplete, as described in README.md.

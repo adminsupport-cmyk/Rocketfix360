@@ -1,0 +1,1437 @@
+/** ROCKETFIX ADMIN POS — LIVE CONNECTOR v12
+ * Device-guarded TEST project. Do not run setup/recovery functions on production data.
+ * REMIT POS fields start at O (payment-proof link); legacy fields shifted and preserved.
+ * All POS edits are keyed by POS ID + service item key, never row numbers.
+ */
+const POS_TZ='Asia/Manila';
+const POS_MASTER_ID='10W8zrKf9rX-BFH2VLDyj8dwNlVJDca2_yArN9eIyNwY';
+const POS_FRAME_ID='1kOtnKnD1eHgmCylidPwGW0veIyokbwVUD4hvNaQf-JU';
+const POS_FOLDER_PROP='RF_POS_LIVE_PROOF_FOLDER_ID';
+const POS_AUTH_PROP='RF_POS_ALLOWED_EMAILS';
+const POS_LEDGER_HEAD=['POS ID','Payment Date','Encoded At','Updated At','Customer','Email','Admin','Received','Editing Paid','Framing Paid','Balance','Payment Method','Proof URL','Sync Status','Last Error','JSON Record'];
+const POS_AUDIT_HEAD=['Timestamp','Action','POS ID','Admin','Old Date','New Date','Old Received','New Received','Result','Error'];
+const POS_REMIT_EXTRA=['POS Proof URL','POS Transaction ID','POS Editing Order ID','POS Item Key','POS Encoded At','POS Updated At','POS Payment Method','POS Shipment Method','POS Paid Allocation','POS Discount Allocation','POS Sync Status','POS Payment Received'];
+// V15.8: Frame Orders add-on data is stored in AV:AY; older columns remain untouched.
+const POS_FRAME_ADDON_COL=48;
+const POS_FRAME_ADDON_HEADERS=['Add-on Type','Add-on Price','Add-on Font','Add-on Exact Message','Add-on Envelope Color','Letter Commission Employee','Letter Commission Amount'];
+const POS_LETTER_PRICE=200;
+const POS_LETTER_COMMISSION=50;
+const POS_LETTER_STAFF=['Joyce Marianne Legaspi','Renz Malenab','Joy Deplomo','Lerni Belino','Mariz Osabel'];
+const POS_STAFF_EARNINGS_TAB='POS Staff Earnings';
+const POS_STAFF_EARNINGS_HEAD=['Earning Key','Payment Date','Type','POS Transaction ID','Frame Order ID','Employee','Earning Amount','Letter Sale Amount','Last Updated','Status'];
+function posLetterStaff_(name,required){
+  const s=String(name||'').trim();
+  if(!s&&required)throw Error('Select a commission recipient for the Personalized Letter.');
+  if(s&&!POS_LETTER_STAFF.includes(s))throw Error('Invalid Personalized Letter commission recipient: '+s);
+  return s;
+}
+/** One register for tips and letter commissions. Append is keyed; edits update the same row. */
+function posEarningsSheet_(){return posEnsureSheet_(posBook_(),POS_STAFF_EARNINGS_TAB,POS_STAFF_EARNINGS_HEAD);}
+function posUpsertEarning_(sheet,key,date,type,posId,frameId,employee,amount,letterSale){
+  const found=[];
+  const n=sheet.getLastRow()-1;
+  if(n>0){const ids=sheet.getRange(2,1,n,1).getDisplayValues();ids.forEach((r,i)=>{if(String(r[0]||'').trim()===key)found.push(i+2);});}
+  if(found.length>1)throw Error('Duplicate staff earning key '+key+'; owner review required.');
+  const row=found[0]||Math.max(sheet.getLastRow()+1,2);
+  if(row>sheet.getMaxRows())sheet.insertRowsAfter(sheet.getMaxRows(),row-sheet.getMaxRows());
+  sheet.getRange(row,1,1,10).setValues([[key,date,type,posId||'',frameId||'',employee||'',amount,letterSale||0,new Date(),'ACTIVE']]);
+  return row;
+}
+function posVoidEarnings_(r){
+  const sheet=posBook_().getSheetByName(POS_STAFF_EARNINGS_TAB);
+  if(!sheet||sheet.getLastRow()<2)return;
+  const keys=new Set(['TIP:'+r.posId]);
+  (r.items||[]).filter(x=>x.kind==='frame').forEach(x=>keys.add('LETTER:'+x.existingId));
+  const cells=sheet.getRange(2,1,sheet.getLastRow()-1,1).getDisplayValues();
+  cells.forEach((v,i)=>{if(keys.has(String(v[0]||''))){sheet.getRange(i+2,10).setValue('VOIDED');sheet.getRange(i+2,9).setValue(new Date());}});
+}
+function posRecordEarnings_(r,sheet){
+  // Existing POS tip remains in REMIT L/M. This is a unified staff-earnings mirror,
+  // not a second customer charge and not a second REMIT allocation.
+  if(Number(r.tip||0)>0){
+    const names={Joyce:'Joyce Marianne Legaspi',Renz:'Renz Malenab',Joy:'Joy Deplomo',Lerni:'Lerni Belino',Mariz:'Mariz Osabel'};
+    const employee=names[String(r.tipRecipient||'')]||String(r.tipRecipient||'');
+    posUpsertEarning_(sheet,'TIP:'+r.posId,r.paymentDate,'Tip',r.posId,'',employee,Number(r.tip),0);
+  }
+  for(const item of r.items||[]){
+    if(item.kind!=='frame'||item.addOnType!=='Personalized Letter')continue;
+    if(!item.addOnCommissionRecipient)continue; // grandfather older paid letters; no invented recipient
+    posUpsertEarning_(sheet,'LETTER:'+item.existingId,r.paymentDate,'Letter Commission',r.posId,item.existingId,item.addOnCommissionRecipient,50,200);
+  }
+}
+
+function posFrameAddonValidate_(item){
+ if(item.kind!=='frame')return;
+ const type=String(item.addOnType||'').trim();
+ if(!type||type==='None'){
+   item.addOnType='';item.addOnFont='';item.addOnMessage='';item.addOnColor='';item.addOnCommissionRecipient='';return;
+ }
+ if(type!=='Personalized Letter')throw Error('Unsupported frame add-on: '+type);
+ if(!['Cursive','Typewrited','Regular'].includes(String(item.addOnFont||'')))throw Error('Choose a valid letter font for '+item.existingId+'.');
+ const color=String(item.addOnColor||'').trim();
+ if(!['Pink','Blue','White Gold'].includes(color))throw Error('Select Pink, Blue, or White Gold envelope color for '+item.existingId+'.');
+ const message=String(item.addOnMessage||'');
+ if(message.trim().toUpperCase()!=='N/A'&&(message.trim().length<100||message.length>6000))throw Error('Personalized Letter message must be 100–6000 characters or N/A for '+item.existingId+'.');
+ if(/^[=+@]/.test(message)) { /* The value is stored with forced plain text formatting below. */ }
+ item.addOnCommissionRecipient=posLetterStaff_(item.addOnCommissionRecipient,false);item.addOnType='Personalized Letter';item.addOnFont=String(item.addOnFont);item.addOnMessage=message.trim().toUpperCase()==='N/A'?'N/A':message;item.addOnColor=color;
+}
+function posFrameAddonCharge_(item){return item.kind==='frame'&&item.addOnType==='Personalized Letter'?POS_LETTER_PRICE:0;}
+function posFrameAddonEnsureHeaders_(sh){
+ const first=POS_FRAME_ADDON_COL,headers=POS_FRAME_ADDON_HEADERS;
+ const needed=first+headers.length-1;
+ if(sh.getMaxColumns()<needed)sh.insertColumnsAfter(sh.getMaxColumns(),needed-sh.getMaxColumns());
+ const top=sh.getRange(1,first,1,headers.length);
+ const present=top.getDisplayValues()[0];
+ if(present.some((v,i)=>v&&v!==headers[i]))throw Error('Frame Orders add-on columns AV:AZ are occupied by different headers. Nothing overwritten.');
+ if(present.some((v,i)=>!v))present.forEach((v,i)=>{if(!v)sh.getRange(1,first+i).setValue(headers[i]);});
+}
+
+const POS_FRAME_EXTRA=['POS Transaction ID','POS Item Key','POS Payment Date','POS Paid Allocation','POS Discount Allocation','POS Encoded At','POS Updated At','POS Editing Order IDs','POS Sync Status'];
+
+/** TEMPORARY TEST MODE: No Gmail whitelist enforcement.
+ * WARNING: With 'Who has access: Anyone', every visitor can invoke POS actions,
+ * including reading sales and changing/deleting transactions.
+ * Restore server-side authentication before using this publicly in production.
+ */
+function posRequireAuth_() { return 'Device-gated internal call'; }
+function doGet(e){
+  // Publish release on first request served by the NEW deployed build.
+  // Apps Script does not emit a deployment event; opening /exec once activates the signal.
+  const props=PropertiesService.getScriptProperties();
+  const published=Number(props.getProperty('RF_POS_LIVE_RELEASE')||0);
+  if(RF_POS_BUILD_NUMBER>published)props.setProperty('RF_POS_LIVE_RELEASE',String(RF_POS_BUILD_NUMBER));
+  const template=HtmlService.createTemplateFromFile('Index');
+  template.rfPosWebUrl=ScriptApp.getService().getUrl()||'';
+  return template.evaluate().setTitle('Rocketfix Admin POS — LIVE').addMetaTag('viewport','width=device-width,initial-scale=1');
+}
+function posBook_(){return SpreadsheetApp.openById(POS_MASTER_ID);}
+function posSheet_(id,tab){const sh=SpreadsheetApp.openById(id).getSheetByName(tab);if(!sh)throw Error('Missing '+tab+' tab; run posSetupLive_() first.');return sh;}
+function posEnsureSheet_(book,name,headers){let sh=book.getSheetByName(name);if(!sh)sh=book.insertSheet(name);if(sh.getMaxColumns()<headers.length)sh.insertColumnsAfter(sh.getMaxColumns(),headers.length-sh.getMaxColumns());if(sh.getRange(1,1,1,headers.length).getValues()[0].every(x=>!x))sh.getRange(1,1,1,headers.length).setValues([headers]);else if(sh.getRange(1,1,1,headers.length).getDisplayValues()[0].join('|')!==headers.join('|'))throw Error(name+' has unexpected headers. Do not overwrite existing data.');sh.setFrozenRows(1);return sh;}
+function posEnsureExtra_(sh,row,firstCol,headers){if(sh.getMaxColumns()<firstCol+headers.length-1)sh.insertColumnsAfter(sh.getMaxColumns(),firstCol+headers.length-1-sh.getMaxColumns());const range=sh.getRange(row,firstCol,1,headers.length),found=range.getDisplayValues()[0];if(found.some((v,i)=>v&&v!==headers[i]))throw Error('Unexpected metadata headers in '+sh.getName()+'. Stop to avoid overwriting columns.');range.setValues([headers]);}
+function posSetupLive_(){
+  const caller=String(Session.getActiveUser().getEmail()||'').trim().toLowerCase(),owner=String(Session.getEffectiveUser().getEmail()||'').trim().toLowerCase();
+  if(!caller||!owner||caller!==owner)throw Error('Run this setup directly in Apps Script as the project owner.');
+  const master=posBook_();posEnsureSheet_(master,'POS Ledger',POS_LEDGER_HEAD);posEnsureSheet_(master,'POS Audit',POS_AUDIT_HEAD);
+  posEnsureExtra_(posSheet_(POS_MASTER_ID,'REMIT'),5,15,POS_REMIT_EXTRA);
+  posEnsureExtra_(posSheet_(POS_FRAME_ID,'Orders'),1,39,POS_FRAME_EXTRA);
+  posFrameAddonEnsureHeaders_(posSheet_(POS_FRAME_ID,'Orders'));
+  const props=PropertiesService.getScriptProperties();if(!props.getProperty(POS_AUTH_PROP))props.setProperty(POS_AUTH_PROP,owner);let folderId=props.getProperty(POS_FOLDER_PROP);
+  if(!folderId){const folder=DriveApp.createFolder('ROCKETFIX POS — LIVE PAYMENT PROOFS');folderId=folder.getId();props.setProperty(POS_FOLDER_PROP,folderId);}
+  return {mode:'LIVE',masterSheet:'https://docs.google.com/spreadsheets/d/'+POS_MASTER_ID+'/edit',frameSheet:'https://docs.google.com/spreadsheets/d/'+POS_FRAME_ID+'/edit',proofFolderId:folderId};
+}
+function posEnv_(){posRequireAuth_();const master=posBook_(),ledger=master.getSheetByName('POS Ledger'),audit=master.getSheetByName('POS Audit');if(!ledger||!audit)throw Error('Run posSetupLive_() once.');return {ledger,audit,remit:posSheet_(POS_MASTER_ID,'REMIT'),frames:posSheet_(POS_FRAME_ID,'Orders'),folderId:PropertiesService.getScriptProperties().getProperty(POS_FOLDER_PROP)};}
+/** Use the REMIT Column L data-validation list as the POS tip-recipient dropdown source. */
+function posGetTipEmployees_(){
+  posRequireAuth_();
+  const sh=posSheet_(POS_MASTER_ID,'REMIT');
+  const rule=sh.getRange(6,12).getDataValidation();
+  const fallback=['Select','Joyce','Renz','Joy','Lerni'];
+  if(!rule)return fallback;
+  const type=rule.getCriteriaType();
+  if(type===SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST){
+    const items=rule.getCriteriaValues()[0];
+    return Array.from(new Set((items||[]).map(x=>String(x).trim()).filter(Boolean)));
+  }
+  if(type===SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE){
+    const range=rule.getCriteriaValues()[0];
+    return Array.from(new Set(range.getDisplayValues().flat().map(x=>String(x).trim()).filter(Boolean)));
+  }
+  return fallback;
+}
+
+/** Sales/history use only SYNCED records. Integrity checks include pending ones. */
+function posGetTransactions_(includeUnconfirmed){
+ const s=posBook_().getSheetByName('POS Ledger'),n=s.getLastRow()-1;
+ if(n<1)return [];
+ const rows=s.getRange(2,14,n,3).getValues(); // N status, O error, P JSON
+ return rows.map(v=>{
+   const status=String(v[0]||'').trim().toUpperCase();
+   if(!includeUnconfirmed && status!=='SYNCED')return null;
+   try{return JSON.parse(v[2]);}catch(e){return null;}
+ }).filter(x=>x&&!x.deletedAt).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+function posFindInCol_(sh,col,value,startRow){const n=sh.getLastRow()-startRow+1;if(n<=0)return -1;const a=sh.getRange(startRow,col,n,1).getDisplayValues();for(let i=0;i<a.length;i++)if(String(a[i][0]).trim().toUpperCase()===String(value).trim().toUpperCase())return i+startRow;return -1;}
+function posNum_(v){const x=Number(v);if(!Number.isFinite(x)||x<0)throw Error('Amounts must be finite nonnegative numbers.');return x;}
+function posDate_(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s)))throw Error('Payment date must be YYYY-MM-DD.');const dt=new Date(s+'T12:00:00Z');if(isNaN(dt)||Utilities.formatDate(dt,'UTC','yyyy-MM-dd')!==s)throw Error('Invalid payment date.');return dt;}
+function posMoney_(v){return Math.round((Number(v)+Number.EPSILON)*100)/100;}
+function posItemKey_(r,item){return r.posId+'|'+item.kind+'|'+item.existingId;}
+function posWriteLedger_(env,r,status,error,oldRow){const v=[r.posId,r.paymentDate,r.encodedAt,r.updatedAt,r.first+' '+r.last,r.email,r.admin,r.received,r.editPaid,r.framePaid,r.balance,r.method,r.proof||'',status,error||'',JSON.stringify(r)];const row=oldRow>0?oldRow:Math.max(env.ledger.getLastRow()+1,2);if(row>env.ledger.getMaxRows())env.ledger.insertRowsAfter(env.ledger.getMaxRows(),row-env.ledger.getMaxRows());env.ledger.getRange(row,1,1,16).setValues([v]);
+  if(env.ledger.getMaxColumns()<17)env.ledger.insertColumnsAfter(env.ledger.getMaxColumns(),17-env.ledger.getMaxColumns());
+  const head=String(env.ledger.getRange(1,17).getDisplayValue()||'').trim();
+  if(head&&head!=='POS Excess')throw Error('POS Ledger column Q is occupied by another field; excess not written.');
+  if(!head)env.ledger.getRange(1,17).setValue('POS Excess');
+  env.ledger.getRange(row,17).setValue(posMoney_(r.excess||0));
+  env.ledger.getRange(row,1).setNumberFormat('@');return row;}
+function posServiceAmounts_(r){
+  const items=r.items,ed=items.filter(x=>x.kind==='editing'),fr=items.filter(x=>x.kind==='frame');
+  const distribute=(arr,paid)=>{let weight=arr.reduce((a,x)=>a+Number(x.amount)+posFrameAddonCharge_(x)+Number(x.kind==='frame'?(x.shippingFee||0):0),0),remaining=posMoney_(paid);arr.forEach((x,i)=>{let amt=i===arr.length-1?remaining:posMoney_(weight?paid*(Number(x.amount)+posFrameAddonCharge_(x)+Number(x.kind==='frame'?(x.shippingFee||0):0))/weight:paid/arr.length);x._paid=amt;remaining=posMoney_(remaining-amt);});};
+  distribute(ed,r.editPaid);distribute(fr,r.framePaid);
+  const grand=items.reduce((a,x)=>a+Number(x.amount)+posFrameAddonCharge_(x),0);items.forEach(x=>x._discount=posMoney_(grand?r.discount*(Number(x.amount)+posFrameAddonCharge_(x))/grand:0));
+}
+
+function posFindBlankRemitRow_(sh,startRow){
+  const last=Math.max(sh.getLastRow(),startRow),rows=last-startRow+1;
+  if(rows<1)return -1;
+  // A:F define whether the remittance row is still empty for a new order.
+  const vals=sh.getRange(startRow,1,rows,6).getDisplayValues();
+  for(let i=0;i<vals.length;i++){
+    if(vals[i].every(v=>String(v).trim()==='')) return startRow+i;
+  }
+  return -1;
+}
+
+function posValidateIds_(env,r,previous){
+  const old=(previous&&previous.items)||[];const oldMap=new Map(old.map(x=>[x.kind+'|'+x.existingId,x]));
+  // Existing linked services cannot be deleted, retyped or assigned a new ID. This avoids orphaning production records.
+  for(const prior of old){if(!r.items.some(x=>x.kind===prior.kind&&x.existingId===prior.existingId))throw Error('A linked service ID cannot be changed or removed. Edit its details instead.');}
+  const dup=new Set();for(const item of r.items){const id=String(item.existingId||'').toUpperCase(),key=item.kind+'|'+id;if(dup.has(key))throw Error('Duplicate item ID '+id);dup.add(key);item.existingId=id;
+    if(!oldMap.has(key)){
+      const pattern=item.kind==='editing'?/^RF\d{5}[A-Z]$/:/^[A-Z]{2}\d[A-Z]\d$/;
+      if(!pattern.test(id))throw Error('Invalid '+item.kind+' ID '+id);
+      if(item.kind==='editing'){
+        const tracking=posSheet_(POS_MASTER_ID,'Tracking');
+        if(posFindInCol_(tracking,1,id,2)>0||posFindInCol_(env.remit,17,id,6)>0)throw Error('Editing ID already exists: '+id);
+      }else if(posFindInCol_(env.frames,3,id,2)>0)throw Error('Frame ID already exists: '+id);
+    }
+  }
+  const others=posGetTransactions_(true).filter(t=>t.posId!==r.posId);
+  for(const item of r.items)if(others.some(t=>(t.items||[]).some(x=>x.existingId===item.existingId)))throw Error('ID already registered in POS: '+item.existingId);
+}
+function posSyncRemit_(env,r,item){
+  const key=posItemKey_(r,item),sh=env.remit;
+  let row=posFindInCol_(sh,18,key,6),isNew=row<0;
+  if(isNew){
+    const blankRow=posFindBlankRemitRow_(sh,6);
+    row=blankRow>0?blankRow:Math.max(sh.getLastRow()+1,6);
+    if(row>sh.getMaxRows())sh.insertRowsAfter(sh.getMaxRows(),row-sh.getMaxRows());
+  }
+  const links=String(item.frameOrderId||'').trim().toUpperCase(); // One editing item -> one optional frame ID
+  const base=[posDate_(r.paymentDate),r.email,r.first+' '+r.last,item.orderType||'Family',item.fileType||'NORMAL FILE',item._paid];
+  const extra=[r.proof||'',r.posId,item.existingId,key,r.encodedAt,r.updatedAt,r.method,r.shipping?.ship||'',item._paid,item._discount,'SYNCED',r.received];
+  // Write the permanent item key FIRST. If a later validated cell fails, retry locates this same row.
+  sh.getRange(row,15,1,extra.length).setValues([extra]);
+  sh.getRange(row,1,1,6).setValues([base]);sh.getRange(row,1).setNumberFormat('m/d/yyyy');
+  sh.getRange(row,11).setValue(links);
+  // REMIT column L has strict dropdown values: Joyce, Renz, Select, Joy, Lerni.
+  // The POS no longer asks for Handled By; retain any existing valid staff selection.
+  // For new POS orders, use its permitted neutral option; admin email stays in POS Ledger/Audit.
+  const allowedHandlers=posGetTipEmployees_();
+  const firstEditing=r.items.find(x=>x.kind==='editing');
+  const handler=String(r.tipRecipient||'Select').trim();
+  if(!allowedHandlers.includes(handler))throw Error('Select a valid employee from REMIT column L: '+handler);
+  // Use the same tip recipient for all editing rows in this POS transaction.
+  sh.getRange(row,12).setValue(handler);
+  // REMIT mapping after data-preserving migration: M (13) = Tip Amount, N (14) = Notes.
+  // O (15) stores the payment-proof URL. Legacy notes archive shifted right and is preserved.
+  // Record the total tip only once per POS transaction to avoid duplicate tips.
+  sh.getRange(row,13).setValue(item===firstEditing?r.tip:0);
+  sh.getRange(row,14).setValue(item.notes||r.remarks||'');
+  // AA stores the per-editing rush target date. Tracking N receives this date.
+  // This is a new POS-only metadata column; existing REMIT A:Z is unchanged.
+  const rush=item.fileType==='RUSH FILE';
+  const rushDate=rush&&item.rushTargetDate?posDate_(item.rushTargetDate):'';
+  const target=sh.getRange(row,27);
+  target.setValue(rushDate);
+  if(rushDate)target.setNumberFormat('m/d/yyyy');
+  return {row,newRow:isNew};
+}
+function posSize_(value){
+  // New production names must be written to Orders!D exactly as selected.
+  const production=['10"x13" - Small','13"x17" - Medium','18"x26.5" - Large','25.5"x35" - X-Large','18"x26.5" - Custom Cotton Canvas'];
+  if(production.includes(value))return value;
+  // Keep old POS transactions editable without changing their original production sizes.
+  const legacy={'9x12':'9"x12"','12x16':'12"x16"','17x25':'17"x25"','24x24':'24"x24"','24x34':'24"x34"'};
+  return legacy[value]||value;
+}
+/** Receiver name belongs to shipping details, not the payer/remittance customer. Prefer the shared shipping receiver; retain legacy per-item receiver fallback. */
+function posFrameReceiverParts_(item,r){
+  const full=String(((r.shipping||{}).receiverName||item.receiverName||'')).trim().replace(/\s+/g,' ').slice(0,160);
+  if(!full)return {first:String(r.first||''),last:String(r.last||'')};
+  if(/^n\/?a$/i.test(full))return {first:'N/A',last:''};
+  const words=full.split(' ');
+  // Match the Admin POS Full Name convention: final word as surname.
+  // One-word recipient names are accepted without creating a false last name.
+  return words.length===1?{first:words[0],last:''}:{first:words.slice(0,-1).join(' '),last:words[words.length-1]};
+}
+/** V16.14: Strict frame-row resolver. An existing linked frame must NEVER create a second Orders row.
+ * Key: AN (POS Item Key, col 40); definitive order ID: C (col 3).
+ * A stale/missing key is repaired only when the original POS transaction owns the same row.
+ */
+function posResolveFrameRow_(sh,r,item,previous){
+  const id=String(item.existingId||'').trim().toUpperCase();
+  const key=posItemKey_(r,item);
+  if(!id)throw Error('Missing Frame Order ID; nothing written.');
+  const last=sh.getLastRow();
+  const matchesKey=[],matchesId=[];
+  if(last>=2){
+    const n=last-1;
+    const ids=sh.getRange(2,3,n,1).getDisplayValues();
+    const keys=sh.getRange(2,40,n,1).getDisplayValues();
+    for(let i=0;i<n;i++){
+      if(String(ids[i][0]||'').trim().toUpperCase()===id)matchesId.push(i+2);
+      if(String(keys[i][0]||'').trim().toUpperCase()===key.toUpperCase())matchesKey.push(i+2);
+    }
+  }
+  if(matchesId.length>1||matchesKey.length>1)
+    throw Error('Duplicate Frame Order rows detected for '+id+'. Save stopped; review Orders rows before editing.');
+  const keyRow=matchesKey[0]||0, idRow=matchesId[0]||0;
+  if(keyRow&&idRow&&keyRow!==idRow)
+    throw Error('Frame Order '+id+' has conflicting POS keys in Orders. No rows changed.');
+  if(keyRow&&!idRow)
+    throw Error('POS Item Key exists but Frame Order ID differs for '+id+'. No rows changed.');
+  const oldItems=Array.isArray(previous&&previous.items)?previous.items:[];
+  const wasLinked=oldItems.some(x=>x.kind==='frame'&&String(x.existingId||'').trim().toUpperCase()===id);
+  const found=keyRow||idRow;
+  if(found){
+    const owner=String(sh.getRange(found,39).getDisplayValue()||'').trim();
+    const currentKey=String(sh.getRange(found,40).getDisplayValue()||'').trim();
+    if(owner&&owner!==String(r.posId))
+      throw Error('Frame Order '+id+' belongs to a different POS transaction. No rows changed.');
+    if(currentKey&&currentKey.toUpperCase()!==key.toUpperCase())
+      throw Error('Frame Order '+id+' has a different existing POS item key. No rows changed.');
+    if(!wasLinked&&!keyRow)
+      throw Error('Frame Order '+id+' already exists. Cannot add the same frame to a different/new transaction.');
+    return {row:found,isNew:false};
+  }
+  if(wasLinked)
+    throw Error('Previously linked Frame Order '+id+' cannot be found. No duplicate row was created.');
+  return {row:Math.max(last+1,2),isNew:true};
+}
+
+/** Write only changed cells: edits to an editing item must not rewrite an untouched frame. */
+function posFrameSetChanged_(sh,row,col,value){
+  const cell=sh.getRange(row,col);
+  const existing=cell.getValue();
+  const same=(typeof existing==='number'&&typeof value==='number')?
+    Math.abs(existing-value)<0.000001:String(existing==null?'':existing)===String(value==null?'':value);
+  if(!same)cell.setValue(value);
+}
+function posFrameSetTextChanged_(sh,row,col,text){
+  const cell=sh.getRange(row,col);
+  const proposed=String(text||'');
+  if(cell.getDisplayValue()!==proposed){
+    if(proposed)cell.setRichTextValue(SpreadsheetApp.newRichTextValue().setText(proposed).build());
+    else cell.clearContent();
+  }
+}
+/** Write only truly changed cells, grouping consecutive columns into one call.
+ * The original implementation used a read and possible write for EACH field,
+ * which was especially slow for mixed editing + framing transactions.
+ * Never touch unrelated cells, formulas, production status or blank columns.
+ */
+function posFrameWriteChangedBulkV1620_(sh,row,desired){
+  const cols=Object.keys(desired).map(Number).sort((a,b)=>a-b);
+  if(!cols.length)return;
+  const current=sh.getRange(row,1,1,Math.max(...cols)).getValues()[0];
+  const changes=[];
+  for(const col of cols){
+    const value=desired[col],prior=current[col-1];
+    const equal=(typeof prior==='number'&&typeof value==='number')?
+      Math.abs(prior-value)<0.000001:String(prior==null?'':prior)===String(value==null?'':value);
+    if(!equal)changes.push({col,value});
+  }
+  let batch=[];
+  const flush=()=>{
+    if(!batch.length)return;
+    sh.getRange(row,batch[0].col,1,batch.length).setValues([batch.map(x=>x.value)]);
+    batch=[];
+  };
+  for(const item of changes){
+    if(batch.length&&item.col!==batch[batch.length-1].col+1)flush();
+    batch.push(item);
+  }
+  flush();
+}
+
+function posSyncFrame_(env,r,item,previous){
+  const sh=env.frames;
+  posFrameAddonEnsureHeaders_(sh);
+  const resolved=posResolveFrameRow_(sh,r,item,previous);
+  const row=resolved.row,isNew=resolved.isNew,key=posItemKey_(r,item);
+  if(isNew&&row>sh.getMaxRows())sh.insertRowsAfter(sh.getMaxRows(),row-sh.getMaxRows());
+  const shipment=r.shipping||{};
+  const receiver=posFrameReceiverParts_(item,r);
+  const shipLabel='Shipping: ₱'+Number(item.shippingFee||0).toFixed(2)+' ('+(shipment.area||'')+', '+(item.shippingTier||'')+', '+(item.shippingDays||'')+')';
+  const cells={1:shipment.ship||'LBC',3:item.existingId,4:posSize_(item.size||'10"x13" - Small'),5:item.design||'Black with Acrylic Frame',6:Number(item.amount),7:r.method,8:receiver.first,9:receiver.last,10:shipment.contactPhone||r.phone||'',11:r.email,12:shipment.street||'',13:shipment.barangay||'',14:shipment.city||'',15:shipment.province||'',16:shipment.postal||'',17:[shipLabel,shipment.shippingNotes,item.notes,r.remarks].filter(Boolean).join(' | ')};
+  if(isNew){cells[2]=new Date();cells[18]=item.photo||'';cells[19]=r.proof||'';cells[20]=item.status||'HOLD';}
+  else {if(item.photo)cells[18]=item.photo;if(r.proof)cells[19]=r.proof;}
+  if(item.addOnType==='Personalized Letter'){
+    if(item.addOnCommissionRecipient){cells[53]=item.addOnCommissionRecipient;cells[54]=POS_LETTER_COMMISSION;}
+    cells[48]='Personalized Letter';cells[49]=posFrameAddonCharge_(item);
+    cells[50]=item.addOnFont||'';
+    // Column AY (51) uses a dedicated text-only writer to prevent text
+    // beginning with =, + or @ from being interpreted as a formula.
+    cells[52]=item.addOnColor||'';
+  }
+  const extras=[r.posId,key,r.paymentDate,item._paid,item._discount,r.encodedAt,r.updatedAt,r.items.filter(x=>x.kind==='editing'&&String(x.frameOrderId||'').toUpperCase()===String(item.existingId||'').toUpperCase()).map(x=>x.existingId).join(', '),'SYNCED'];
+  extras.forEach((v,i)=>cells[39+i]=v);
+  posFrameWriteChangedBulkV1620_(sh,row,cells);
+  if(item.addOnType==='Personalized Letter'){
+    posFrameSetTextChanged_(sh,row,51,item.addOnMessage||'');
+    sh.getRange(row,49).setNumberFormat('"₱"#,##0.00');
+    if(item.addOnCommissionRecipient)sh.getRange(row,54).setNumberFormat('"₱"#,##0.00');
+  }
+  if(isNew)sh.getRange(row,6).setNumberFormat('"₱"#,##0.00');
+  return {row,newRow:isNew};
+}
+
+/** V16.18: Small, durable intake for NEW POS IDs.
+ * Do not scan Tracking / REMIT / Frame Orders or run pricing lookups before
+ * the ledger has acknowledged receipt. These checks happen in the worker.
+ * A PENDING entry is NOT a completed sale.
+ */
+function posFastIntakeV1618_(r,proof,authorizedDeviceLabel){
+  Logger.log('POS '+r.posId+' FAST_INTAKE_START');
+  const seen=new Set();
+  for(const item of r.items){
+    const id=String(item.existingId||'').trim().toUpperCase();
+    const pattern=item.kind==='editing'?/^RF\d{5}[A-Z]$/:/^[A-Z]{2}\d[A-Z]\d$/;
+    if(!pattern.test(id))throw Error('Invalid '+item.kind+' order ID '+id+'. No payment recorded.');
+    const key=item.kind+'|'+id;
+    if(seen.has(key))throw Error('Duplicate order ID '+id+'. No payment recorded.');
+    seen.add(key);item.existingId=id;
+    if(item.kind==='frame'&&item.addOnType==='Personalized Letter')posLetterStaff_(item.addOnCommissionRecipient,true);
+  }
+  r.tipRecipient=String(r.tipRecipient||'Select').trim();
+  r.received=posNum_(r.received||0);
+  r.discount=posNum_(r.discount||0);
+  r.tip=posNum_(r.tip||0);
+  if(r.received<=0)throw Error('Received payment must be greater than zero. No payment recorded.');
+  if(proof&&proof.uploadId){
+    const saved=CacheService.getScriptCache().get('POS_PROOF_DONE_'+String(proof.uploadId));
+    if(!saved)throw Error('Payment proof upload expired; upload again. No payment recorded.');
+    const info=JSON.parse(saved);
+    if(String(info.posId)!==String(r.posId))throw Error('Proof belongs to another POS ID.');
+    r.proof=info.url;r.proofFileName=info.name;
+  }
+  if(r.proof&&!/^https:\/\//i.test(String(r.proof)))throw Error('Payment proof URL must be HTTPS.');
+  if(r.items.some(x=>x.kind==='frame')&&!['LBC','LALAMOVE'].includes(r.shipping?.ship))throw Error('Choose LBC or LALAMOVE. No payment recorded.');
+  r.admin=String(authorizedDeviceLabel||'Registered device');
+  r.encodedAt=new Date().toISOString();r.updatedAt=r.encodedAt;
+  // Received amount is authoritative; allocation and pricing are calculated by
+  // the worker after ALL full validations. Do not use these values as synced sales.
+  r.editPaid=0;r.framePaid=0;r.balance=0;
+  r._fastIntakeV1618=true;
+  if(!posWorkerInstalledV1616_())throw Error('Remittance worker missing. No payment recorded; run POS_V1616_INSTALL_WORKER as owner.');
+  // Open ONLY the Master workbook, not the Tracking, REMIT or Frame Orders tabs.
+  const ledger=posBook_().getSheetByName('POS Ledger');
+  if(!ledger)throw Error('POS Ledger tab missing. No payment recorded.');
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(8000))throw Error('POS is busy saving another order. Nothing confirmed; check POS Ledger by ID before retrying.');
+  try{
+    const found=posFindInCol_(ledger,1,r.posId,2);
+    if(found>0){
+      const prior=ledger.getRange(found,14,1,3).getValues()[0];
+      const priorStatus=String(prior[0]||'').trim().toUpperCase();
+      Logger.log('POS '+r.posId+' ALREADY_IN_LEDGER status='+priorStatus);
+      // Do not overwrite it, even if a previous browser callback was lost.
+      throw Error('POS #'+r.posId+' already exists in Ledger ('+priorStatus+'). Check Ledger; do not submit again.');
+    }
+    const row=Math.max(2,ledger.getLastRow()+1);
+    if(row>ledger.getMaxRows())ledger.insertRowsAfter(ledger.getMaxRows(),Math.max(100,row-ledger.getMaxRows()));
+    // Single write for all 17 fields, instead of repeatedly reformatting columns.
+    ledger.getRange(row,1,1,17).setValues([[
+      r.posId,r.paymentDate,r.encodedAt,r.updatedAt,
+      String(r.first||'')+' '+String(r.last||''),r.email,r.admin,r.received,
+      0,0,0,r.method||'',r.proof||'','PENDING','',JSON.stringify(r),0
+    ]]);
+    SpreadsheetApp.flush();
+    Logger.log('POS '+r.posId+' FAST_INTAKE_COMMITTED row='+row);
+    return {ok:true,queued:true,status:'PENDING',record:r,mode:'LIVE'};
+  }finally{lock.releaseLock();}
+}
+
+/** Full server-side pricing and ID validations are intentionally deferred to
+ * the scheduled worker, BEFORE any REMIT / Frame Orders / earnings write.
+ * If a check fails, the ledger is marked ERROR and no auto-resubmission occurs.
+ */
+function posFinalizeQueuedV1618_(env,r,previous){
+  Logger.log('POS '+r.posId+' WORKER_VALIDATE_START');
+  posValidateIds_(env,r,previous||null);
+  for(const item of r.items.filter(x=>x.kind==='frame'&&x.addOnType==='Personalized Letter')){
+    const prior=(previous?.items||[]).find(x=>x.kind==='frame'&&x.existingId===item.existingId&&x.addOnType==='Personalized Letter');
+    if(!prior||item.addOnCommissionRecipient)posLetterStaff_(item.addOnCommissionRecipient,true);
+    if(prior?.addOnCommissionRecipient&&item.addOnCommissionRecipient!==prior.addOnCommissionRecipient)
+      throw Error('Letter commission recipient cannot change after payment: '+item.existingId);
+  }
+  if(!posGetTipEmployees_().includes(String(r.tipRecipient||'Select')))throw Error('Tip recipient must be selected from REMIT column L.');
+  if(r.items.some(x=>x.kind==='frame'))posFrameAddonEnsureHeaders_(env.frames);
+  const cfg=rfFrameCfgRead_();
+  for(const item of r.items.filter(x=>x.kind==='frame')){
+    let kind;
+    try{kind=rfFrameProductKind_(item.design);}catch(err){if(item.customSize)throw err;continue;}
+    const quote=rfFrameProductQuote_(item,cfg);
+    if(quote.needsQuote)throw Error('Configure '+item.design+' pricing before saving '+item.existingId+'.');
+    if(quote.calculated&&Math.abs(Number(item.amount)-quote.price)>0.01)throw Error('Product price changed; refresh calculator: '+item.existingId+'.');
+    if(item.customSize)item.size=Number(item.customWidth)+'"x'+Number(item.customHeight)+'" - Custom '+(kind==='framed'?'Black Frame':kind==='print'?'Print Only':'Canvas Only');
+  }
+  const freight=rfFrameShippingQuote_(r,cfg);
+  r.shippingFee=freight.fee;r.shippingTier=freight.tier;r.shippingDays=freight.days;r.shippingManual=freight.manual;
+  const subtotal=r.items.reduce((a,x)=>a+Number(x.amount)+posFrameAddonCharge_(x),0);
+  r.discount=posNum_(r.discount||0);r.tip=posNum_(r.tip||0);r.received=posNum_(r.received||0);
+  if(r.discount>subtotal)throw Error('Discount exceeds subtotal.');
+  const actualDue=posMoney_(subtotal-r.discount+r.tip+r.shippingFee);
+  if(r.received+0.001<actualDue)throw Error('Amount paid below actual amount due. Check order/payment before retrying.');
+  r.excess=posMoney_(Math.max(0,r.received-actualDue));
+  const ed=r.items.filter(x=>x.kind==='editing').reduce((a,x)=>a+Number(x.amount),0);
+  const net=subtotal-r.discount+r.shippingFee;
+  const paidBeforeTip=Math.max(0,Math.min(r.received,actualDue)-r.tip);
+  r.editPaid=net?posMoney_(paidBeforeTip*(ed-(subtotal?r.discount*ed/subtotal:0))/net):0;
+  r.framePaid=posMoney_(paidBeforeTip-r.editPaid);r.balance=0;r.due=actualDue;
+  posServiceAmounts_(r);
+  Logger.log('POS '+r.posId+' WORKER_VALIDATED');
+}
+
+function posSaveTransaction_(input,proof,authorizedDeviceLabel){
+  if(!input||!/^[0-9]{8}$/.test(String(input.posId||'')))throw Error('Invalid POS transaction ID.');
+  const r=JSON.parse(JSON.stringify(input));posDate_(r.paymentDate);
+  if(!String(r.first||'').trim()||!String(r.email||'').trim()||!Array.isArray(r.items)||!r.items.length)throw Error('Customer name (one word or N/A), email or N/A, and at least one service are required.');
+  r.email=String(r.email||'').trim();
+  if(/^n\/?a$/i.test(r.email)){r.email='N/A';}
+  else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email))throw Error('Enter a valid email address or choose N/A (email pending).');
+  r.shipping=r.shipping&&typeof r.shipping==='object'?r.shipping:{};
+  r.shipping.contactPhone=String(r.shipping.contactPhone||'').trim().slice(0,50);
+  if(r.items.length>20)throw Error('Maximum 20 services per transaction.');
+  if(r.items.some(x=>!['editing','frame'].includes(x.kind)))throw Error('Unknown service type.');
+  const frameIds=new Set(r.items.filter(x=>x.kind==='frame').map(x=>String(x.existingId||'').trim().toUpperCase()));
+  const allocatedFrames=new Set();
+  for(const item of r.items){
+    item.amount=posNum_(item.amount);
+    if(item.kind==='frame')posFrameAddonValidate_(item);
+    if(item.kind!=='editing')continue;
+    item.frameOrderId=String(item.frameOrderId||'').trim().toUpperCase();
+    if(item.frameOrderId){
+      if(!frameIds.has(item.frameOrderId))throw Error('Frame ID '+item.frameOrderId+' is not in this transaction.');
+      if(allocatedFrames.has(item.frameOrderId))throw Error('Frame ID '+item.frameOrderId+' is assigned to multiple editing items.');
+      allocatedFrames.add(item.frameOrderId);
+    }
+    if(item.fileType==='RUSH FILE'){
+      if(!item.rushTargetDate)throw Error('Target date is required for rush editing '+item.existingId+'.');
+      posDate_(item.rushTargetDate);
+    }else item.rushTargetDate='';
+  }
+  // V16.20: both NEW transactions and EXISTING transaction edits use
+  // a short, durable Ledger intake. The owner worker performs slow validations
+  // and multi-sheet writes after the browser has a receipt for the POS ID.
+  if(!r.updatedAt)return posFastIntakeV1618_(r,proof,authorizedDeviceLabel);
+  return posFastEditIntakeV1620_(r,proof,authorizedDeviceLabel);
+}
+
+/** V16.20: edit intake opens ONLY the POS Ledger; no REMIT / Frame Orders
+ * scans, pricing lookups or expensive sheet writes under the save lock.
+ * The previous ledger snapshot stays embedded for safe row reconciliation.
+ * This is a QUEUED UPDATE, not a new customer payment.
+ */
+function posFastEditIntakeV1620_(r,proof,authorizedDeviceLabel){
+  const previousVersion=String(r.updatedAt||'');
+  if(!previousVersion)throw Error('Existing-order update requires the original version.');
+  r.tipRecipient=String(r.tipRecipient||'Select').trim();
+  r.received=posNum_(r.received||0);
+  r.tip=posNum_(r.tip||0);
+  r.discount=posNum_(r.discount||0);
+  if(proof&&proof.uploadId){
+    const saved=CacheService.getScriptCache().get('POS_PROOF_DONE_'+String(proof.uploadId));
+    if(!saved)throw Error('Payment proof upload expired; please upload it again. Nothing changed.');
+    const info=JSON.parse(saved);
+    if(String(info.posId)!==String(r.posId))throw Error('Proof belongs to a different POS ID.');
+    r.proof=info.url;r.proofFileName=info.name;
+  }
+  if(r.proof&&!/^https:\/\//i.test(String(r.proof)))throw Error('Proof must be a secure HTTPS URL.');
+  if(r.items.some(x=>x.kind==='frame')&&!['LBC','LALAMOVE'].includes(r.shipping?.ship))
+    throw Error('Choose LBC or LALAMOVE. Nothing changed.');
+  if(!posWorkerInstalledV1616_())throw Error('POS background worker not installed; nothing changed.');
+  const ledger=posBook_().getSheetByName('POS Ledger');
+  if(!ledger)throw Error('POS Ledger missing; nothing changed.');
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(8000))throw Error('Another POS update is being recorded. Check Ledger before retrying.');
+  try{
+    const row=posFindInCol_(ledger,1,r.posId,2);
+    if(row<0)throw Error('Existing POS ID not found. Refresh the transaction; nothing changed.');
+    const oldCells=ledger.getRange(row,14,1,3).getValues()[0];
+    const status=String(oldCells[0]||'').trim().toUpperCase();
+    if(status!=='SYNCED')throw Error('POS #'+r.posId+' is '+status+'. Do not submit another update; check Ledger.');
+    const old=JSON.parse(oldCells[2]);
+    if(old.deletedAt)throw Error('Deleted transactions cannot be changed.');
+    if(previousVersion!==String(old.updatedAt))throw Error('Transaction changed elsewhere. Refresh it before editing.');
+    const original=(old.items||[]).map(x=>x.kind+'|'+String(x.existingId||'').toUpperCase());
+    const incoming=(r.items||[]).map(x=>x.kind+'|'+String(x.existingId||'').toUpperCase());
+    if(original.some(key=>!incoming.includes(key)))throw Error('Linked order IDs cannot be removed or changed.');
+    // Stash pre-edit snapshot in the pending record for safe existing-row lookup.
+    r._queuedEditPreviousV1620=old;
+    r._fastIntakeV1618=true;
+    r._queuedEditV1620=true;
+    r.encodedAt=old.encodedAt;
+    r.updatedAt=new Date().toISOString();
+    r.admin=String(authorizedDeviceLabel||'Registered device');
+    // Preserve old allocation until the worker recalculates everything.
+    r.editPaid=Number(old.editPaid||0);r.framePaid=Number(old.framePaid||0);
+    r.balance=Number(old.balance||0);r.excess=Number(old.excess||0);
+    const values=[r.posId,r.paymentDate,r.encodedAt,r.updatedAt,
+      String(r.first||'')+' '+String(r.last||''),r.email,r.admin,r.received,
+      r.editPaid,r.framePaid,r.balance,r.method||'',r.proof||'',
+      'PENDING','EDIT QUEUED — previous record preserved',JSON.stringify(r),r.excess];
+    // One 17-column write under the lock. Never append an existing transaction.
+    ledger.getRange(row,1,1,17).setValues([values]);
+    SpreadsheetApp.flush();
+    Logger.log('POS '+r.posId+' FAST_EDIT_QUEUED row='+row);
+    return {ok:true,queued:true,status:'PENDING',record:r,mode:'LIVE',edit:true};
+  }finally{lock.releaseLock();}
+}
+
+/** If a partial source write fails, re-run sync by POS ID; no duplicate row is created if POS Item Key is present. */
+function posRetrySync_(posId){const lock=LockService.getScriptLock();lock.waitLock(30000);try{const env=posEnv_(),row=posFindInCol_(env.ledger,1,posId,2);if(row<0)throw Error('POS not found.');const r=JSON.parse(env.ledger.getRange(row,16).getValue());posServiceAmounts_(r);for(const item of r.items){if(item.kind==='editing')posSyncRemit_(env,r,item);else posSyncFrame_(env,r,item,r);}posRecordEarnings_(r,posEarningsSheet_());posWriteLedger_(env,r,'SYNCED','',row);env.audit.appendRow([new Date().toISOString(),'RETRY',r.posId,Session.getActiveUser().getEmail()||'POS Admin','','','',r.received,'SYNCED','']);return {ok:true,posId};}finally{lock.releaseLock();}}
+
+/** Resumable Drive upload for JPEG / PNG / WEBP / PDF, up to 25 MiB. */
+function posBeginProofUpload_(posId,name,mimeType,size,smallBase64){
+  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID.');
+  if(!allowed.includes(mimeType))throw Error('Only JPG, PNG, WEBP and PDF are accepted.');
+  if(!Number.isInteger(size)||size<1||size>25*1024*1024)throw Error('Maximum payment proof is 25 MB.');
+  const folderId=PropertiesService.getScriptProperties().getProperty(POS_FOLDER_PROP);
+  if(!folderId)throw Error('Payment proof folder is not configured.');
+  const safe=String(name||'proof').replace(/[^a-zA-Z0-9_.-]/g,'_').slice(0,100);
+  // V16.21: Small receipt, single authorized route call + one Drive upload.
+  // No duplicate path in REMIT; 'save' later consumes a short-lived proof token.
+  if(smallBase64!==undefined&&smallBase64!==null){
+    if(typeof smallBase64!=='string'||!smallBase64||size>900*1024)
+      throw Error('Invalid compressed proof payload.');
+    const bytes=Utilities.base64Decode(smallBase64);
+    if(bytes.length!==size)throw Error('Proof payload size mismatch; upload was not accepted.');
+    const blob=Utilities.newBlob(bytes,mimeType,posId+'_'+safe);
+    const folder=DriveApp.getFolderById(folderId);
+    const uploaded=folder.createFile(blob);
+    const token=Utilities.getUuid().replace(/-/g,'');
+    const url='https://drive.google.com/file/d/'+uploaded.getId()+'/view';
+    CacheService.getScriptCache().put('POS_PROOF_DONE_'+token,JSON.stringify({url,name:safe,posId}),1200);
+    return {uploadId:token,done:true,url};
+  }
+
+  const res=UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,webViewLink,name',{method:'post',muteHttpExceptions:true,contentType:'application/json',headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken(),'X-Upload-Content-Type':mimeType,'X-Upload-Content-Length':String(size)},payload:JSON.stringify({name:posId+'_'+safe,parents:[folderId]})});
+  if(![200,201].includes(res.getResponseCode()))throw Error('Cannot initialize Drive upload: '+res.getResponseCode()+' '+res.getContentText().slice(0,160));
+  const session=res.getHeaders().Location||res.getHeaders().location;if(!session)throw Error('Missing Drive upload session.');
+  const token=Utilities.getUuid().replace(/-/g,'');CacheService.getScriptCache().put('POS_PROOF_SESSION_'+token,JSON.stringify({session,size,posId,name:safe,mimeType,next:0}),1200);
+  return {uploadId:token,chunkSize:2*1024*1024};
+}
+function posUploadProofChunk_(uploadId,base64,start){
+  posRequireAuth_();const cache=CacheService.getScriptCache(),key='POS_PROOF_SESSION_'+String(uploadId),raw=cache.get(key);if(!raw)throw Error('Upload session expired; try again.');
+  const info=JSON.parse(raw),bytes=Utilities.base64Decode(base64);if(start!==info.next||bytes.length<1||bytes.length>2*1024*1024||start+bytes.length>info.size)throw Error('Invalid upload chunk.');
+  const end=start+bytes.length-1;
+  const res=UrlFetchApp.fetch(info.session,{method:'put',muteHttpExceptions:true,contentType:info.mimeType,payload:bytes,headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken(),'Content-Range':'bytes '+start+'-'+end+'/'+info.size}});
+  const code=res.getResponseCode();
+  if(end+1<info.size){if(code!==308)throw Error('Upload failed at '+start+': HTTP '+code);info.next=end+1;cache.put(key,JSON.stringify(info),1200);return {done:false,uploaded:info.next,total:info.size};}
+  if(code!==200&&code!==201)throw Error('Upload completion failed: HTTP '+code+' '+res.getContentText().slice(0,180));
+  const file=JSON.parse(res.getContentText()),url=file.webViewLink||'https://drive.google.com/file/d/'+file.id+'/view';cache.put('POS_PROOF_DONE_'+uploadId,JSON.stringify({url,name:info.name,posId:info.posId}),1200);cache.remove(key);return {done:true,url};
+}
+
+/** One-time recovery for the October 31 transaction already saved in POS Ledger.
+ * Run ONLY once after deploying this fix. Uses the original POS ID and item key.
+ */
+function posRetryOctober31FailedOrder_(){
+  return posRetrySync_('99323580');
+}
+
+/** Delete a transaction from ACTIVE Sheets only. Keep a private forensic record and proof in Drive.
+ * The data-only clear preserves REMIT dropdowns, formulas, formatting and row positions.
+ * A frame with production/shipping activity cannot be removed by a POS admin.
+ */
+
+/** V11 — Clear the complete Tracking row for a DELETED POS editing item.
+ * Every target is identified by the exact persisted editing ID, and only POS-era
+ * rows (10251 onward) may be cleared. No row is physically deleted: sheet
+ * structure, validation and formatting stay intact. Other orders are untouched.
+ */
+function posClearDeletedTrackingDetails_(record){
+  const ids=new Set((record.items||[]).filter(x=>x.kind==='editing')
+    .map(x=>String(x.existingId||'').trim().toUpperCase()).filter(Boolean));
+  if(!ids.size)return 0;
+  const tr=posBook_().getSheetByName('Tracking');
+  if(!tr)throw Error('Tracking sheet not found for deleted POS order cleanup.');
+  const first=10251,last=tr.getLastRow();if(last<first)return 0;
+  const values=tr.getRange(first,1,last-first+1,1).getDisplayValues();
+  const candidates=[];
+  values.forEach((r,i)=>{if(ids.has(String(r[0]||'').trim().toUpperCase()))candidates.push({row:first+i,id:String(r[0]).trim().toUpperCase()});});
+  const seen=new Set();for(const x of candidates){
+    if(seen.has(x.id))throw Error('Duplicate Tracking ID '+x.id+'; manual cleanup required.');
+    seen.add(x.id);
+  }
+  let count=0;
+  for(const x of candidates){
+    // Recheck just before editing in case the Tracking row moved.
+    if(String(tr.getRange(x.row,1).getDisplayValue()||'').trim().toUpperCase()!==x.id)
+      throw Error('Tracking order ID changed before cleanup: '+x.id);
+    tr.getRange(x.row,1,1,tr.getMaxColumns()).clearContent();
+    count++;
+  }
+  return count;
+}
+/** Existing function names preserved for compatibility with V10 manual menus. */
+function posClearDeletedTrackingFiles_(record){return posClearDeletedTrackingDetails_(record);}
+/** Read-only preview: already deleted POS editing IDs still present in Tracking. */
+function posPreviewDeletedTrackingFileCleanup_(){
+  const b=posBook_(),ledger=b.getSheetByName('POS Ledger'),tr=b.getSheetByName('Tracking');
+  if(!ledger||!tr)throw Error('POS Ledger or Tracking sheet missing.');
+  const ids=new Map();
+  if(ledger.getLastRow()>1)ledger.getRange(2,14,ledger.getLastRow()-1,3).getValues().forEach(r=>{
+    if(String(r[0]).trim().toUpperCase()!=='DELETED')return;
+    try{const record=JSON.parse(r[2]);if(!record.deletedAt)return;
+      (record.items||[]).filter(x=>x.kind==='editing').forEach(x=>{
+        const id=String(x.existingId||'').trim().toUpperCase();if(id)ids.set(id,record.posId);
+      });
+    }catch(e){}
+  });
+  const out=[],first=10251,last=tr.getLastRow();if(last<first)return out;
+  const rows=tr.getRange(first,1,last-first+1,1).getDisplayValues();
+  rows.forEach((r,i)=>{const id=String(r[0]||'').trim().toUpperCase();
+    if(ids.has(id))out.push({trackingRow:first+i,editingOrderId:id,deletedPosId:ids.get(id),action:'Clear all row details A:'+tr.getMaxColumns()+' (contents only)'});
+  });
+  Logger.log(JSON.stringify(out,null,2));return out;
+}
+/** Recovery of Tracking rows from ALREADY-DELETED POS records. Run preview first. */
+function posRepairDeletedTrackingFileLinks_(){
+  posRequireAuth_();
+  const l=posBook_().getSheetByName('POS Ledger');if(!l)return 0;
+  let removed=0;
+  if(l.getLastRow()<2)return removed;
+  const rows=l.getRange(2,14,l.getLastRow()-1,3).getValues();
+  for(const r of rows){
+    if(String(r[0]).trim().toUpperCase()!=='DELETED')continue;
+    try{const record=JSON.parse(r[2]);if(record.deletedAt)removed+=posClearDeletedTrackingDetails_(record);}
+    catch(e){Logger.log('Skipped deleted Tracking cleanup: '+String(e));}
+  }
+  Logger.log('Tracking rows cleared for deleted POS IDs: '+removed);return removed;
+}
+/** Find REMIT file chips left by V10 delete logic. READ ONLY. Older deleted
+ * rows lost their POS item-key linkage; therefore candidate rows cannot be
+ * attributed to a particular POS ID automatically. Check with your backup.
+ */
+function posPreviewOrphanRemitFiles_(){
+  const s=posBook_().getSheetByName('REMIT'),first=6,last=s.getLastRow(),out=[];
+  if(last<first)return out;
+  const data=s.getRange(first,1,last-first+1,27).getDisplayValues();
+  data.forEach((r,i)=>{
+    const noIdentity=r.slice(0,6).every(v=>!String(v||'').trim());
+    const hasFiles=r.slice(6,10).some(v=>String(v||'').trim());
+    const noPosData=r.slice(10,27).every((v,j)=>!String(v||'').trim() || (j===1 && String(v).trim()==='Select'));
+    if(noIdentity&&hasFiles&&noPosData)out.push({remitRow:first+i,displayedFiles:r.slice(6,10)});
+  });
+  Logger.log(JSON.stringify(out,null,2));return out;
+}
+/** Operator-controlled repair of legacy orphan file chips. Run preview, then
+ * place manually verified row numbers in RF_POS_DELETE_ORPHAN_REMIT_ROWS.
+ * Never attempt to guess deleted order rows from customer name alone.
+ */
+function posRepairVerifiedOrphanRemitFiles_(){
+  posRequireAuth_();const p=PropertiesService.getScriptProperties();
+  const text=String(p.getProperty('RF_POS_DELETE_ORPHAN_REMIT_ROWS')||'').trim();
+  if(!text)throw Error('Set RF_POS_DELETE_ORPHAN_REMIT_ROWS to manually verified row numbers first.');
+  const rows=Array.from(new Set(text.split(',').map(x=>Number(x.trim()))));
+  if(rows.some(n=>!Number.isSafeInteger(n)||n<6))throw Error('Invalid REMIT row numbers.');
+  const remit=posBook_().getSheetByName('REMIT'),cleared=[];
+  for(const row of rows){
+    if(row>remit.getLastRow())throw Error('REMIT row '+row+' is outside the used sheet.');
+    const v=remit.getRange(row,1,1,27).getDisplayValues()[0];
+    if(v.slice(0,6).some(x=>String(x||'').trim()) ||
+       v.slice(10,27).some((x,j)=>String(x||'').trim() && !(j===1&&String(x).trim()==='Select')))
+      throw Error('REMIT row '+row+' contains order data; not an orphan. Stopped.');
+    if(v.slice(6,10).some(x=>String(x||'').trim())){
+      remit.getRange(row,7,1,4).clearContent();cleared.push(row);
+    }
+  }
+  p.deleteProperty('RF_POS_DELETE_ORPHAN_REMIT_ROWS');
+  Logger.log('Cleared verified REMIT orphan file links on rows: '+cleared.join(','));
+  return cleared;
+}
+
+function posDeleteTransaction_(posId, expectedUpdatedAt,authorizedDeviceLabel){
+  posRequireAuth_();
+  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS transaction ID.');
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const env=posEnv_();
+    const ledgerRow=posFindInCol_(env.ledger,1,posId,2);
+    if(ledgerRow<2)throw Error('POS transaction not found.');
+    const current=env.ledger.getRange(ledgerRow,14,1,3).getValues()[0];
+    const state=String(current[0]||'');
+    const record=JSON.parse(current[2]);
+    if(state==='DELETED'||record.deletedAt){
+      // Even after a prior successful deletion, finish any leftover Tracking cleanup.
+      const cleared=posClearDeletedTrackingDetails_(record);
+      return {ok:true,posId,alreadyDeleted:true,trackingRowsCleared:cleared};
+    }
+    if(state!=='SYNCED'&&state!=='DELETING')throw Error('This transaction is not fully synced. Repair the sync before deleting.');
+    if(state!=='DELETING'&&String(record.updatedAt)!==String(expectedUpdatedAt))throw Error('Transaction changed. Refresh history before deleting.');
+    const targets=[];
+    for(const item of record.items||[]){
+      const sh=item.kind==='editing'?env.remit:env.frames;
+      const col=item.kind==='editing'?18:40;
+      const first=item.kind==='editing'?6:2;
+      const row=posFindInCol_(sh,col,posItemKey_(record,item),first);
+      if(row<0){
+        // The linked sheet row may already have been manually removed.
+        // Still archive and mark the POS Ledger transaction DELETED.
+        continue;
+      }
+      if(item.kind==='editing'){
+        const vals=sh.getRange(row,16,1,3).getDisplayValues()[0];
+        if(String(vals[0]).trim()!==String(posId)||String(vals[2]).trim()!==posItemKey_(record,item))throw Error('REMIT row linkage mismatch for '+item.existingId);
+        const actual=String(sh.getRange(row,17).getDisplayValue()).trim();
+        if(actual!==String(item.existingId))throw Error('Editing ID changed for '+item.existingId+'; manual review required.');
+      } else {
+        const status=String(sh.getRange(row,20).getDisplayValue()||'').trim().toUpperCase();
+        if(status!=='HOLD')throw Error('Frame '+item.existingId+' status is '+status+'. Only HOLD frame orders can be deleted; contact production first.');
+        const workflow=sh.getRange(row,21,1,18).getDisplayValues()[0];
+        if(workflow.some(x=>String(x).trim()))throw Error('Frame '+item.existingId+' has email, mockup, tracking or production information. Deletion blocked.');
+        if(String(sh.getRange(row,3).getDisplayValue()).trim()!==String(item.existingId))throw Error('Frame order ID mismatch for '+item.existingId);
+      }
+      targets.push({sh,row,kind:item.kind,id:item.existingId});
+    }
+    const archive=posEnsureSheet_(posBook_(),'POS Deleted Archive',['Deleted At','POS ID','Deleted By','Original Payment Date','Amount Received','Original Record JSON']);
+    const existing=posFindInCol_(archive,2,posId,2);
+    const now=new Date().toISOString(),admin=String(authorizedDeviceLabel || 'Registered device');
+    if(existing<0)archive.appendRow([now,posId,admin,record.paymentDate,record.received,JSON.stringify(record)]);
+    env.ledger.getRange(ledgerRow,14,1,2).setValues([['DELETING','Removing POS-linked orders']]);
+    // No row deletion: preserve formatted blank templates and downstream row references.
+    for(const t of targets){
+      if(t.kind==='editing'){
+        t.sh.getRange(t.row,1,1,6).clearContent();
+        t.sh.getRange(t.row,7,1,4).clearContent();  // G:J file smart chips / URLs (V11 FIX)
+        t.sh.getRange(t.row,11,1,16).clearContent(); // K:Z
+        t.sh.getRange(t.row,27).clearContent(); // AA: POS rush target date
+      }else{
+        t.sh.getRange(t.row,1,1,20).clearContent(); // A:T
+        t.sh.getRange(t.row,39,1,9).clearContent(); // AM:AU
+      }
+    }
+    record.deletedAt=now;record.deletedBy=admin;record.updatedAt=now;
+    env.ledger.getRange(ledgerRow,4).setValue(now);
+    env.ledger.getRange(ledgerRow,14,1,3).setValues([['DELETED','',JSON.stringify(record)]]);
+    env.audit.appendRow([now,'DELETE',posId,admin,record.paymentDate,'',record.received,0,'DELETED','']);
+    let trackingRowsCleared=0,trackingCleanupError='';
+    try{trackingRowsCleared=posClearDeletedTrackingDetails_(record);}catch(e){
+      trackingCleanupError=String(e.message||e);
+      Logger.log('Deleted POS '+posId+' Tracking cleanup pending: '+trackingCleanupError);
+    }
+    // A partial cleanup must be visible to the cashier, not silently described as complete.
+    return {ok:!trackingCleanupError,posId,removed:targets.length,trackingRowsCleared,
+      trackingCleanupError,deleted:true,needsAttention:!!trackingCleanupError};
+  }finally{lock.releaseLock();}
+}
+
+/** Release notification for Admin POS open tabs. 150 = V15; increase for new releases. */
+const RF_POS_BUILD_NUMBER=1620;
+const RF_POS_RELEASE_PROPERTY='RF_POS_LIVE_RELEASE';
+/** Called by clients every minute. No private information returned. */
+function rfPosGetPublishedRelease(){
+ const stored=Number(PropertiesService.getScriptProperties().getProperty(RF_POS_RELEASE_PROPERTY)||0);
+ return {release:stored};
+}
+/** Run manually from Apps Script editor AFTER deploying a new version of the same web app. */
+function RF_POS_ANNOUNCE_NEW_VERSION(){
+ const caller=String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();
+ const owner=String(Session.getEffectiveUser().getEmail()||'').trim().toLowerCase();
+ if(!caller||!owner||caller!==owner)throw Error('Only the script owner may announce the new POS release from the editor.');
+ const props=PropertiesService.getScriptProperties();
+ const previous=Number(props.getProperty(RF_POS_RELEASE_PROPERTY)||0);
+ if(RF_POS_BUILD_NUMBER<previous)throw Error('Release number is older than current published version.');
+ props.setProperty(RF_POS_RELEASE_PROPERTY,String(RF_POS_BUILD_NUMBER));
+ return {success:true,release:RF_POS_BUILD_NUMBER,previous:previous,message:'Release announced. Older open POS tabs will detect the new release at their next version check.'};
+}
+
+
+/** V16.4: Lookup / paid late add-ons. Does not rewrite original frame price or POS Ledger. */
+const RF_LATE_ADDON_TAB='POS Late Add-ons';
+const RF_LATE_ADDON_HEAD=['Recorded At','Frame Order ID','Customer','Email','Add-on','Amount Received','Payment Date','Payment Method','Envelope Color','Font','Exact Message','Recorded By','Payment Reference'];
+const RF_LATE_VIBER_HEADERS=['Viber Status','Viber Detail','Viber Updated At'];
+const RF_LATE_COMMISSION_COL=17;
+function rfLateCommissionHeaders_(sh){
+ if(sh.getMaxColumns()<18)sh.insertColumnsAfter(sh.getMaxColumns(),18-sh.getMaxColumns());
+ const expected=['Commission Employee','Commission Amount'];
+ const current=sh.getRange(1,17,1,2).getDisplayValues()[0];
+ if(current.some((v,i)=>v&&v!==expected[i]))throw Error('POS Late Add-ons Q:R have different headers. Commission not written.');
+ if(current.some(v=>!v))sh.getRange(1,17,1,2).setValues([expected]);
+}
+function rfLateCommissionReconcile_(id,prev){
+ const sh=prev.sheet,row=prev.row;
+ if(sh.getMaxColumns()<18)return;
+ const v=sh.getRange(row,17,1,2).getDisplayValues()[0];
+ const employee=String(v[0]||'').trim();
+ if(!employee)return; // older letter: do not invent commissions or assignees
+ posLetterStaff_(employee,true);
+ if(Number(String(v[1]||'').replace(/[^\d.-]/g,''))!==50)throw Error('Late commission amount mismatched for '+id+'.');
+ const date=String(sh.getRange(row,7).getDisplayValue()||'');
+ posUpsertEarning_(posEarningsSheet_(),'LETTER:'+id,date,'Letter Commission','LATE ADD-ON',id,employee,50,200);
+}
+function rfLateAddonLog_(){
+ const book=posBook_();let sh=book.getSheetByName(RF_LATE_ADDON_TAB);
+ if(!sh)sh=book.insertSheet(RF_LATE_ADDON_TAB);
+ if(sh.getMaxColumns()<RF_LATE_ADDON_HEAD.length)sh.insertColumnsAfter(sh.getMaxColumns(),RF_LATE_ADDON_HEAD.length-sh.getMaxColumns());
+ const range=sh.getRange(1,1,1,RF_LATE_ADDON_HEAD.length),head=range.getDisplayValues()[0];
+ if(head.some((v,i)=>v&&v!==RF_LATE_ADDON_HEAD[i]))throw Error('Unexpected late add-on ledger headers. No changes made.');
+ if(head.some(v=>!v))range.setValues([RF_LATE_ADDON_HEAD]);
+ if(sh.getMaxColumns()<16)sh.insertColumnsAfter(sh.getMaxColumns(),16-sh.getMaxColumns());
+ const vheads=sh.getRange(1,14,1,3),found=vheads.getDisplayValues()[0];
+ if(found.some((v,i)=>v&&v!==RF_LATE_VIBER_HEADERS[i]))throw Error('Late add-on log N:P already used; no changes made.');
+ if(found.some(v=>!v))vheads.setValues([RF_LATE_VIBER_HEADERS]);
+ return sh;
+}
+function rfLateAddonId_(id){
+ id=String(id==null?'':id).trim().toUpperCase();
+ if(!id||id.length>100)throw Error('Enter an existing Frame Order ID (1–100 characters).');
+ return id;
+}
+function rfLateAddonRead_(id){
+ id=rfLateAddonId_(id);
+ const sh=posSheet_(POS_FRAME_ID,'Orders');
+ const row=posFindInCol_(sh,3,id,2);
+ if(row<2)throw Error('Frame order not found: '+id);
+ const v=sh.getRange(row,1,1,52).getDisplayValues()[0];
+ const status=String(v[19]||'').trim();
+ const existing=String(v[47]||'').trim();
+ return {id,name:[v[7],v[8]].filter(Boolean).join(' '),email:v[10],size:v[3],status,
+  addOnType:existing,addOnPrice:v[48],font:v[49],message:v[50],color:v[51],
+  editable:!existing&&!/SHIP|DELIVER|COMPLET|REFUND|CANCEL/i.test(status),
+  reason:existing?'An add-on is already recorded for this order.':/SHIP|DELIVER|COMPLET|REFUND|CANCEL/i.test(status)?'This order is already shipped, completed, or closed.':'',
+ };
+}
+function rfLateAddonLookup_(id){
+ const order=rfLateAddonRead_(id);
+ const payment=rfLateAddonExistingPayment_(order.id);
+ order.latePaymentRecorded=!!payment;
+ order.repairNeeded=!!payment&&!order.addOnType;
+ if(payment){order.editable=false;order.reason=order.repairNeeded?'Payment already recorded, but Frame Orders AV:AZ is incomplete. Use Restore Saved Add-on; never save or collect payment again.':'This ₱200 add-on payment is already recorded. Do not save another payment.';}
+ const props=PropertiesService.getScriptProperties();
+ order.viberConfigured=rfLateChannelConfigured_();
+ if(payment){
+  const v=payment.sheet.getRange(payment.row,14,1,3).getDisplayValues()[0];
+  order.viberStatus=String(v[0]||'UNCONFIRMED');
+  order.viberDetail=String(v[1]||'');
+ }
+ return order;
+}
+
+/** V16.8: Reuse the SAME existing Rocketfix Viber CHANNEL as normal remittances.
+ * Works with ViberChannel.gs -> rfChPost_ if it exists in the same Apps Script project.
+ * Fallback uses the SAME Channel Script Properties, not a new bot or destination.
+ * Claims ADDON:<frameId> in existing POS Viber Channel Log before sending.
+ * REVIEW is intentionally never resent without an owner's manual reconciliation.
+ */
+function rfLateChannelConfigured_(){
+ const p=PropertiesService.getScriptProperties();
+ return !!(String(p.getProperty('RF_VIBER_CHANNEL_TOKEN')||'').trim()&&String(p.getProperty('RF_VIBER_CHANNEL_SENDER_ID')||'').trim());
+}
+function rfLateAddonViberText_(entry){
+ return ['🔔 NEW REMITTANCE ARRIVED!','',
+  'Type: PAID LATE ADD-ON',
+  'Frame Order: '+entry.id,'Date: '+entry.date,'Customer: '+(entry.name||'N/A'),
+  'Services:','• Personalized Premium Letter — ₱200.00',
+  'Amount paid: ₱200.00',
+  'Payment: '+entry.method,
+  'Envelope: '+entry.color,'Font: '+entry.font,
+  'Recorded by: '+entry.editor,(entry.paymentRef?'Payment reference: '+entry.paymentRef:'')]
+  .filter(Boolean).join('\n').slice(0,5900);
+}
+function rfLateChannelLog_(){
+ const sh=posBook_().getSheetByName('POS Viber Channel Log');
+ if(!sh)throw Error('Existing POS Viber Channel Log missing; do not create another destination.');
+ const headers=['Date','POS ID','Result','Text token','Photo token','Details'];
+ if(sh.getRange(1,1,1,6).getDisplayValues()[0].join('|')!==headers.join('|'))
+  throw Error('Existing Viber Channel log headers differ. No report sent.');
+ return sh;
+}
+function rfLateAddonViberNotify_(text,id){
+ if(!rfLateChannelConfigured_())return {status:'QUEUED',detail:'Payment saved; waiting for the original Viber-connected Apps Script to post the report. Not sent yet.'};
+ const log=rfLateChannelLog_(), key='ADDON:'+id;
+ const n=log.getLastRow()-1;
+ if(n>0){
+  const ids=log.getRange(2,2,n,1).getDisplayValues();
+  for(let i=0;i<n;i++)if(String(ids[i][0]).trim().toUpperCase()===key.toUpperCase()){
+   const v=log.getRange(i+2,3,1,4).getDisplayValues()[0];
+   const state=String(v[0]||'REVIEW').trim().toUpperCase();
+   if(state==='SENT')return {status:'SENT',detail:'Viber Channel already accepted this report. Token: '+String(v[1]||'')};
+   return {status:'REVIEW',detail:'Previous Viber attempt is '+state+' (Viber Channel Log row '+(i+2)+'). Check before retrying; no duplicate message attempted.'};
+  }
+ }
+ // Claim message identity BEFORE network call; a timeout cannot cause a duplicate automatic post.
+ const row=log.getLastRow()+1;
+ if(row>log.getMaxRows())log.insertRowsAfter(log.getMaxRows(),100);
+ log.getRange(row,1,1,6).setValues([[new Date(),key,'SENDING','','','Late add-on; awaiting Viber Channel response']]);
+ SpreadsheetApp.flush();
+ try{
+  let result;
+  if(typeof rfChPost_==='function'){
+   result=rfChPost_({type:'text',text:text});
+  }else{
+   const p=PropertiesService.getScriptProperties();
+   const resp=UrlFetchApp.fetch('https://chatapi.viber.com/pa/post',{
+    method:'post',contentType:'application/json',muteHttpExceptions:true,
+    payload:JSON.stringify({auth_token:p.getProperty('RF_VIBER_CHANNEL_TOKEN'),from:p.getProperty('RF_VIBER_CHANNEL_SENDER_ID'),type:'text',text:text})
+   });
+   try{result=JSON.parse(resp.getContentText()||'{}');}catch(_){result={};}
+   if(resp.getResponseCode()!==200||result.status!==0)throw Error('Viber Channel HTTP '+resp.getResponseCode()+' status '+result.status+' '+String(result.status_message||''));
+  }
+  const token=String(result.message_token||'');
+  log.getRange(row,3,1,4).setValues([['SENT',token,'','Late add-on report; no duplicate payment']]);
+  return {status:'SENT',detail:'Viber Channel accepted report'+(token?' token '+token:'')};
+ }catch(e){
+  const reason=String(e.message||e).slice(0,210);
+  // Uncertain network results are not retried automatically.
+  log.getRange(row,3,1,4).setValues([['REVIEW','','','Unconfirmed Channel post: '+reason]]);
+  return {status:'REVIEW',detail:'Channel result uncertain; check Channel chat/log before retrying. '+reason};
+ }
+}
+function rfLateAddonViberSendRecorded_(id){
+ const prior=rfLateAddonExistingPayment_(id);
+ if(!prior)throw Error('No saved ₱200 payment for this Frame Order. Use Save Paid first.');
+ const sh=prior.sheet,row=prior.row;
+ const v=sh.getRange(row,1,1,16).getDisplayValues()[0];
+ if(Number(String(v[5]||'').replace(/[^\d.-]/g,''))!==200)throw Error('Saved payment amount is not ₱200. Review payment before notifying Viber.');
+ const status=String(v[13]||'').trim().toUpperCase();
+ if(status==='SENT')return {ok:true,alreadyRecorded:true,id,amount:200,viberStatus:'SENT',viberDetail:'Viber report already sent; no second post.',viberText:''};
+ if(status==='REVIEW'||status==='UNCONFIRMED'||status==='SENDING'||status==='QUEUED')return {ok:true,alreadyRecorded:true,id,amount:200,viberStatus:'REVIEW',viberDetail:'Previous Viber send may have reached Channel. Verify the Channel before reattempting.',viberText:''};
+ const report=rfLateAddonViberText_({id,name:v[2],date:v[6],method:v[7],color:v[8],font:v[9],editor:v[11],paymentRef:v[12]});
+ const notice=rfLateAddonViberNotify_(report,id);
+ sh.getRange(row,14,1,3).setValues([[notice.status,notice.detail,new Date()]]);
+ return {ok:true,alreadyRecorded:true,id,amount:200,viberStatus:notice.status,viberDetail:notice.detail,viberText:report};
+}
+
+/** V16.6: Read existing late-payment records before attempting a write.
+ * The Frame Order ID is one add-on payment identity. A failed retry must not
+ * append a duplicate payment or report a second sale.
+ */
+function rfLateAddonExistingPayment_(id){
+ const sh=posBook_().getSheetByName(RF_LATE_ADDON_TAB);
+ if(!sh||sh.getLastRow()<2)return null;
+ const n=sh.getLastRow()-1;
+ const ids=sh.getRange(2,2,n,1).getDisplayValues();
+ let found=null;
+ for(let i=0;i<n;i++)if(String(ids[i][0]||'').trim().toUpperCase()===id){
+  if(found)throw Error('Multiple late add-on payments found for this frame. Ask the owner to review the log before continuing.');
+  found={row:i+2,sheet:sh};
+ }
+ return found;
+}
+/** Avoid mutating the entire 5-column range (or formatting protected cells).
+ * A protected production range still requires the spreadsheet owner to authorize
+ * the account executing this Apps Script; this routine does not bypass protection.
+ */
+function rfLateAddonWriteFrame_(sh,row,item){
+ if(sh.getMaxColumns()<52)throw Error('Frame Orders is missing column AZ. Ask the spreadsheet owner to add Envelope Color in AZ1.');
+ try{
+  sh.getRange(row,48,1,3).setValues([['Personalized Letter',200,item.addOnFont]]);
+  sh.getRange(row,49).setNumberFormat('\"₱\"#,##0.00');
+  sh.getRange(row,51).setRichTextValue(SpreadsheetApp.newRichTextValue().setText(item.addOnMessage).build());
+  sh.getRange(row,52).setValue(item.addOnColor);
+ }catch(e){
+  const message=String(e.message||e);
+  if(/protect|permission|edit/i.test(message))throw Error('Cannot update Frame Orders AV:AZ because these cells are protected for the POS executing account. Ask the sheet owner to allow editing of AV:AZ, then check the order before retrying. Original error: '+message);
+  throw e;
+ }
+}
+/** V16.12: reconcile an existing paid add-on from its original payment log.
+ * Never create another payment, never send another Viber report.
+ * Reject conflict instead of overwriting any different existing add-on.
+ */
+function rfLateAddonReconcile_(id){
+ id=rfLateAddonId_(id);
+ const prev=rfLateAddonExistingPayment_(id);
+ if(!prev)throw Error('No recorded late add-on payment for '+id+'. No repair performed.');
+ const v=prev.sheet.getRange(prev.row,1,1,16).getDisplayValues()[0];
+ const paid=Number(String(v[5]||'').replace(/[^\d.-]/g,''));
+ if(paid!==200||String(v[1]||'').trim().toUpperCase()!==id)throw Error('Payment record mismatch. Manual review required; no changes made.');
+ const item={kind:'frame',existingId:id,addOnType:'Personalized Letter',addOnColor:String(v[8]||''),addOnFont:String(v[9]||''),addOnMessage:String(v[10]||'')};
+ posFrameAddonValidate_(item);
+ const sh=posSheet_(POS_FRAME_ID,'Orders'),row=posFindInCol_(sh,3,id,2);
+ if(row<2)throw Error('Frame order not found. No changes made.');
+ const current=sh.getRange(row,48,1,5).getDisplayValues()[0];
+ const target=['Personalized Letter','200',item.addOnFont,item.addOnMessage,item.addOnColor];
+ const matches=(v,i)=>i===1?Number(String(v||'').replace(/[^\d.-]/g,''))===200:String(v||'').trim()===target[i];
+ const conflicts=current.map((v,i)=>String(v||'').trim()&&!matches(v,i)?' '+['AV','AW','AX','AY','AZ'][i]:null).filter(Boolean);
+ if(conflicts.length)throw Error('Frame add-on fields conflict with the original paid record at '+conflicts.join(',')+'. No overwrite performed.');
+ let restored=false;
+ if(current.some((v,i)=>!matches(v,i))){
+   rfLateAddonWriteFrame_(sh,row,item);
+   SpreadsheetApp.flush();restored=true;
+ }
+ const after=sh.getRange(row,48,1,5).getDisplayValues()[0];
+ if(after.some((v,i)=>!matches(v,i)))throw Error('Frame row verification failed. Payment remains recorded; check AV:AZ before retrying repair.');
+ const status=String(v[13]||'UNCONFIRMED').trim().toUpperCase();
+ return {ok:true,alreadyRecorded:true,reconciled:restored,id,amount:200,frameVerified:true,viberStatus:status,viberDetail:String(v[14]||''),viberText:'',paymentLogRow:prev.row};
+}
+function rfLateAddonSave_(payload,editor){
+ payload=payload&&typeof payload==='object'?payload:{};
+ const id=rfLateAddonId_(payload.id);
+ if(payload.repairOnly===true){
+  const lk=LockService.getScriptLock();lk.waitLock(30000);
+  try{const repaired=rfLateAddonReconcile_(id);const prev=rfLateAddonExistingPayment_(id);if(prev)rfLateCommissionReconcile_(id,prev);return repaired;}finally{lk.releaseLock();}
+ }
+ if(payload.viberOnly===true){
+  const lk=LockService.getScriptLock();lk.waitLock(30000);
+  try{return rfLateAddonViberSendRecorded_(id);}finally{lk.releaseLock();}
+ }
+ if(String(payload.confirmation||'')!=='PAYMENT RECEIVED')throw Error('Confirm the ₱200 payment was received before saving.');
+ const date=String(payload.paymentDate||'');posDate_(date);
+ const method=String(payload.method||'').trim();
+ if(!['GCash','BDO','BPI','GoTyme','Cash','Bank Transfer','Other'].includes(method))throw Error('Choose a valid payment method.');
+ const paymentRef=String(payload.paymentRef||'').trim().slice(0,150);
+ const commissionEmployee=posLetterStaff_(payload.commissionEmployee,true);
+ const item={kind:'frame',existingId:id,addOnType:'Personalized Letter',addOnFont:payload.font,addOnColor:payload.color,addOnMessage:payload.message};
+ posFrameAddonValidate_(item);
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  // FIRST check the log, including cases where an earlier call ended after
+  // recording the payment but before the browser received confirmation.
+  const previous=rfLateAddonExistingPayment_(id);
+  if(previous){
+   // An existing payment cannot be treated as a NEW successful remittance.
+   // Restore missing frame details using the original recorded values only.
+   const reconciled=rfLateAddonReconcile_(id);rfLateCommissionReconcile_(id,previous);return reconciled;
+  }
+  const order=rfLateAddonRead_(id);
+  if(!order.editable){
+   if(order.addOnType)throw Error('Frame Order '+id+' already contains an add-on but has no matching late-payment log. A previous save may be incomplete; review AV:AZ and your payment records before manually recovering. No new payment was recorded.');
+   throw Error(order.reason||'This frame order cannot accept another add-on.');
+  }
+  const sh=posSheet_(POS_FRAME_ID,'Orders');
+  if(sh.getMaxColumns()<52)throw Error('Orders!AZ does not exist. Ask the owner to add the Envelope Color column before saving.');
+  const row=posFindInCol_(sh,3,id,2);
+  if(row<2)throw Error('Frame order disappeared; please retry the lookup.');
+  // Check that the audit sheet can be accessed BEFORE changing the frame.
+  const audit=rfLateAddonLog_();
+  rfLateCommissionHeaders_(audit);posEarningsSheet_();posFrameAddonEnsureHeaders_(sh); // verify destinations before payment
+  rfLateAddonWriteFrame_(sh,row,item);
+  // No changes to original frame price, production status, or POS Ledger.
+  try{
+   audit.appendRow([new Date(),id,order.name,order.email,'Personalized Letter',200,date,method,item.addOnColor,item.addOnFont,item.addOnMessage,editor,paymentRef]);
+  }catch(e){
+   throw Error('Frame add-on was saved, but the payment log could not be updated. Do not charge or submit again. Ask the owner to reconcile '+id+' in POS Late Add-ons. '+String(e.message||e));
+  }
+  const auditRow=audit.getLastRow();
+  audit.getRange(auditRow,17,1,2).setValues([[commissionEmployee,50]]);
+  audit.getRange(auditRow,18).setNumberFormat('"₱"#,##0.00');
+  sh.getRange(row,53,1,2).setValues([[commissionEmployee,50]]);
+  sh.getRange(row,54).setNumberFormat('"₱"#,##0.00');
+  rfLateCommissionReconcile_(id,{sheet:audit,row:auditRow});
+  const viberText=rfLateAddonViberText_({id,name:order.name,date,method,color:item.addOnColor,font:item.addOnFont,editor,paymentRef});
+  const notice=rfLateAddonViberNotify_(viberText,id);
+  try{audit.getRange(auditRow,14,1,3).setValues([[notice.status,notice.detail,new Date()]]);}catch(logErr){console.error('Viber status recording failed: '+String(logErr));}
+  const saved=rfLateAddonExistingPayment_(id);
+  if(!saved)throw Error('Payment log verification failed. Check both sheets before retrying; do not collect payment again.');
+  const confirmed=sh.getRange(row,48,1,5).getDisplayValues()[0];
+  if(confirmed[0]!=='Personalized Letter'||Number(String(confirmed[1]).replace(/[^\d.-]/g,''))!==200||confirmed[2]!==item.addOnFont||confirmed[3]!==item.addOnMessage||confirmed[4]!==item.addOnColor)
+    throw Error('Payment was logged, but frame add-on verification failed. Repair the existing paid order; do not record another payment.');
+  return {ok:true,id,amount:200,frameVerified:true,recordedBy:editor,viberStatus:notice.status,viberDetail:notice.detail,viberText};
+ }finally{lock.releaseLock();}
+}
+function rfLateAddonSales_(){
+ const sh=posBook_().getSheetByName(RF_LATE_ADDON_TAB);if(!sh||sh.getLastRow()<2)return [];
+ const a=sh.getRange(2,1,sh.getLastRow()-1,13).getValues();
+ return a.filter(r=>r[1]&&Number(r[5])>0).map(r=>({id:String(r[1]),date:r[6] instanceof Date?Utilities.formatDate(r[6],POS_TZ,'yyyy-MM-dd'):String(r[6]),amount:Number(r[5]),customer:String(r[2]||''),email:String(r[3]||''),staff:String(r[11]||''),method:String(r[7]||'')}));
+}
+
+/** V16.16 — asynchronous two-phase remittance. Never resend a payment to retry.
+ * Runs only in the POS script project, not the original Viber Channel project.
+ * Install ONCE as the script owner using POS_V1616_INSTALL_WORKER(). */
+const POS_V1616_WORKER='posProcessQueuedRemittancesV1616';
+function posWorkerInstalledV1616_(){
+  // Trigger enumeration is comparatively expensive. Cache only for a short window.
+  const cache=CacheService.getScriptCache(),key='RF_POS_V1617_WORKER_PRESENT';
+  if(cache.get(key)==='1')return true;
+  const installed=ScriptApp.getProjectTriggers().some(t=>t.getHandlerFunction()===POS_V1616_WORKER && t.getEventType()===ScriptApp.EventType.CLOCK);
+  if(installed)cache.put(key,'1',120);
+  return installed;
+}
+function POS_V1616_INSTALL_WORKER(){
+  const caller=String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();
+  const owner=String(Session.getEffectiveUser().getEmail()||'').trim().toLowerCase();
+  if(caller && owner && caller!==owner)throw Error('Run as the Apps Script owner.');
+  const all=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===POS_V1616_WORKER);
+  if(all.length>1)throw Error('Multiple V16.16 worker triggers exist. Inspect triggers before making changes.');
+  if(!all.length)ScriptApp.newTrigger(POS_V1616_WORKER).timeBased().everyMinutes(1).create();
+  const result={installed:posWorkerInstalledV1616_(),handler:POS_V1616_WORKER,duplicates:0,note:'This worker is independent of the original Viber Bridge.'}; Logger.log(JSON.stringify(result));return result;
+}
+/** V16.18: expose PROCESSING separately. Never count an in-flight sync as a paid/synced order. */
+function POS_V1616_WORKER_STATUS(){
+  const triggers=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===POS_V1616_WORKER);
+  const sh=posBook_().getSheetByName('POS Ledger');
+  const counts={PENDING:0,PROCESSING:0,SYNCED:0,ERROR:0},pending=[];
+  if(sh&&sh.getLastRow()>1){
+    const list=sh.getRange(2,1,sh.getLastRow()-1,15).getDisplayValues();
+    list.forEach((v,i)=>{
+      const state=String(v[13]||'').trim().toUpperCase();
+      if(Object.prototype.hasOwnProperty.call(counts,state))counts[state]++;
+      if(state==='PENDING'||state==='PROCESSING')pending.push({row:i+2,posId:String(v[0]),status:state,detail:String(v[14]||'')});
+    });
+  }
+  const result={triggerCount:triggers.length,counts,pending:pending.slice(0,50)};
+  Logger.log(JSON.stringify(result));return result;
+}
+/**
+ * V16.18: lock is held ONLY while claiming a pending transaction.
+ * All slow REMIT, Frame Orders and earnings operations happen OUTSIDE the lock.
+ * The claim is durable (POS Ledger column N = PROCESSING) so concurrent minute
+ * triggers cannot pick up the same POS ID. Failed partial sync => ERROR,
+ * never automatically resubmit or send again.
+ *
+ * Existing trigger handler name is retained for zero-downtime V16.16 upgrades.
+ */
+/** V16.20: If an editor changes only the editing portion of a mixed
+ * transaction, do NOT touch its unchanged frame row. Compare service data
+ * and the transaction fields that are actually projected into that service.
+ */
+function posShouldWriteEditedItemV1620_(r,item){
+  const prev=r._queuedEditPreviousV1620;
+  if(!prev)return true;
+  const earlier=(prev.items||[]).find(x=>x.kind===item.kind&&x.existingId===item.existingId);
+  if(!earlier)return true;
+  const clean=x=>{const c=JSON.parse(JSON.stringify(x));delete c._addonOpen;delete c.uid;return c;};
+  if(JSON.stringify(clean(item))!==JSON.stringify(clean(earlier)))return true;
+  const fields=['paymentDate','method','first','last','email','phone','proof','remarks','tipRecipient','tip','discount','received'];
+  if(fields.some(k=>String(r[k]??'')!==String(prev[k]??'')))return true;
+  return JSON.stringify(r.shipping||{})!==JSON.stringify(prev.shipping||{});
+}
+
+function posProcessQueuedRemittancesV1616(){
+  const book=posBook_(),ledger=book.getSheetByName('POS Ledger');
+  if(!ledger||ledger.getLastRow()<2)return;
+  const snapshot=ledger.getRange(2,1,ledger.getLastRow()-1,14).getDisplayValues();
+  const started=Date.now();let claimed=0;
+  for(let i=0;i<snapshot.length;i++){
+    if(claimed>=2||Date.now()-started>210000)break;
+    if(String(snapshot[i][13]||'').trim().toUpperCase()!=='PENDING')continue;
+    const row=i+2;
+    const lock=LockService.getScriptLock();
+    if(!lock.tryLock(1500))return; // another short save/claim; next minute will retry
+    let record=null,id='';
+    try{
+      if(String(ledger.getRange(row,14).getDisplayValue()).trim().toUpperCase()!=='PENDING')continue;
+      id=String(ledger.getRange(row,1).getDisplayValue()).trim();
+      record=JSON.parse(ledger.getRange(row,16).getValue());
+      if(String(record.posId)!==id)throw Error('Ledger POS ID and JSON do not match.');
+      const claimTime=new Date().toISOString();
+      ledger.getRange(row,14,1,2).setValues([['PROCESSING','Claimed '+claimTime]]);
+      SpreadsheetApp.flush();
+    }catch(e){
+      const reason=String(e&&e.message||e).slice(0,300);
+      ledger.getRange(row,14,1,2).setValues([['ERROR',reason]]);
+      console.error('POS queue claim row '+row+': '+reason);
+      record=null;
+    }finally{lock.releaseLock();}
+    if(!record)continue;
+    claimed++;
+    try{
+      Logger.log('POS '+id+' SYNC_START row '+row);
+      const env=posEnv_();
+      if(record._fastIntakeV1618){
+        // Validate completely before any downstream write, then preserve the
+        // finalized allocations in Ledger while still marked PROCESSING.
+        posFinalizeQueuedV1618_(env,record,record._queuedEditPreviousV1620||null);
+        posWriteLedger_(env,record,'PROCESSING','Full validation passed',row);
+        SpreadsheetApp.flush();
+      }else{
+        posServiceAmounts_(record);
+      }
+      for(const item of record.items){
+        if(!posShouldWriteEditedItemV1620_(record,item)){
+          Logger.log('POS '+id+' UNCHANGED_ITEM_SKIPPED '+item.kind+' '+item.existingId);
+          continue;
+        }
+        if(item.kind==='editing')posSyncRemit_(env,record,item);
+        else posSyncFrame_(env,record,item,record._queuedEditPreviousV1620||record);
+      }
+      posRecordEarnings_(record,posEarningsSheet_());
+      // Do not overwrite a row changed manually while this worker was running.
+      const state=String(ledger.getRange(row,14).getDisplayValue()).trim().toUpperCase();
+      if(state!=='PROCESSING')throw Error('Ledger sync state changed while processing: '+state);
+      delete record._queuedEditPreviousV1620;
+      delete record._queuedEditV1620;
+      posWriteLedger_(env,record,'SYNCED','',row);
+      SpreadsheetApp.flush();
+      Logger.log('POS '+id+' SYNCED');
+      try{env.audit.appendRow([new Date().toISOString(),'QUEUE_SYNC',id,record.admin,'','','',record.received,'SYNCED','']);}
+      catch(auditErr){console.error('POS '+id+' synced; audit log warning: '+String(auditErr));}
+    }catch(e){
+      const reason=String(e&&e.message||e).slice(0,300);
+      // If this attempt partially wrote downstream sheets, do not retry automatically.
+      const state=String(ledger.getRange(row,14).getDisplayValue()).trim().toUpperCase();
+      if(state==='PROCESSING')ledger.getRange(row,14,1,2).setValues([['ERROR',reason]]);
+      try{book.getSheetByName('POS Audit').appendRow([new Date().toISOString(),'QUEUE_SYNC',id,'Worker','','','','','ERROR',reason]);}
+      catch(auditErr){console.error('Audit write warning: '+String(auditErr));}
+      console.error('POS '+id+' requires review: '+reason);
+    }
+  }
+}
+/** Read-only case diagnostic: do NOT resubmit from Apps Script. */
+function POS_V1617_DIAGNOSE_UNCONFIRMED(){
+  const ids=['30985427','65783047','94117833'];const book=posBook_(),sh=book.getSheetByName('POS Ledger');
+  const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,15).getDisplayValues():[];
+  const answer=ids.map(id=>{const at=rows.findIndex(r=>String(r[0]).trim()===id);return at<0?{posId:id,ledger:'NOT_FOUND'}:{posId:id,row:at+2,status:rows[at][13],detail:rows[at][14]};});
+  Logger.log(JSON.stringify(answer));return answer;
+}
+/** Diagnostics only: this intentionally never requeues PROCESSING/ERROR automatically. */
+function POS_V1617_FIND_STALLED(){
+ const sh=posBook_().getSheetByName('POS Ledger');const n=sh.getLastRow();
+ if(n<2)return [];
+ const all=sh.getRange(2,1,n-1,15).getDisplayValues();
+ const result=all.map((r,i)=>({row:i+2,posId:String(r[0]),status:String(r[13]),detail:String(r[14])})).filter(r=>['PROCESSING','ERROR'].includes(r.status.toUpperCase()));
+ Logger.log(JSON.stringify(result));return result;
+}
+
+
+function POS_DEBUG_REMIT_STATUS() {
+  const sh = posBook_().getSheetByName('POS Ledger');
+  if (!sh) throw new Error('POS Ledger not found');
+
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+
+  const rows = sh.getRange(2, 1, last - 1, 15)
+    .getDisplayValues();
+
+  const results = rows
+    .map((r, i) => ({
+      row: i + 2,
+      posId: r[0],
+      status: r[13],
+      error: r[14]
+    }))
+    .filter(r =>
+      ['PENDING', 'PROCESSING', 'ERROR']
+        .includes(String(r.status).toUpperCase())
+    );
+
+  console.log(JSON.stringify(results, null, 2));
+  return results;
+}
+
+
+function POS_DEBUG_PROTECTED_RANGES() {
+  const ss = posBook_();
+
+  const results = [];
+
+  ss.getSheets().forEach(sheet => {
+    const protections = [
+      ...sheet.getProtections(
+        SpreadsheetApp.ProtectionType.RANGE
+      ),
+      ...sheet.getProtections(
+        SpreadsheetApp.ProtectionType.SHEET
+      )
+    ];
+
+    protections.forEach(p => {
+      results.push({
+        sheet: sheet.getName(),
+        type: String(p.getProtectionType()),
+        range: p.getRange().getA1Notation(),
+        description: p.getDescription(),
+        warningOnly: p.isWarningOnly(),
+        canEdit: p.canEdit()
+      });
+    });
+  });
+
+  console.log(JSON.stringify(results, null, 2));
+  return results;
+}
+
+
+function POS_DEBUG_FAILED_ORDER_TYPES() {
+  const sheet = posBook_().getSheetByName('POS Ledger');
+  const rows = [42, 164, 166];
+
+  const results = rows.map(row => {
+    const values = sheet.getRange(row, 1, 1, 16).getValues()[0];
+
+    let items = [];
+    try {
+      const record = JSON.parse(values[15]);
+      items = (record.items || []).map(item => ({
+        type: item.kind,
+        existingId: item.existingId || '',
+        orderType: item.orderType || ''
+      }));
+    } catch (e) {
+      items = [{error: 'Cannot read saved order data'}];
+    }
+
+    return {
+      row,
+      posId: String(values[0]),
+      status: values[13],
+      error: values[14],
+      items
+    };
+  });
+
+  Logger.log(JSON.stringify(results, null, 2));
+  return results;
+}
+
+
+function POS_DEBUG_FRAME_PROTECTION() {
+  const env = posEnv_();
+  const sh = env.frames;
+
+  if (!sh) {
+    throw new Error('Frame Orders sheet not found.');
+  }
+
+  const protections = [
+    ...sh.getProtections(
+      SpreadsheetApp.ProtectionType.SHEET
+    ),
+    ...sh.getProtections(
+      SpreadsheetApp.ProtectionType.RANGE
+    )
+  ];
+
+  const result = {
+    spreadsheet: sh.getParent().getName(),
+    sheet: sh.getName(),
+    protections: protections.map(p => ({
+      type: String(p.getProtectionType()),
+      description: p.getDescription(),
+      range: p.getProtectionType() ===
+        SpreadsheetApp.ProtectionType.RANGE
+        ? p.getRange().getA1Notation()
+        : 'Entire sheet',
+      canEdit: p.canEdit(),
+      warningOnly: p.isWarningOnly()
+    }))
+  };
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+
+function POS_DEBUG_EARNINGS_PROTECTION() {
+  const sh = posEarningsSheet_();
+
+  const protections = [
+    ...sh.getProtections(
+      SpreadsheetApp.ProtectionType.SHEET
+    ),
+    ...sh.getProtections(
+      SpreadsheetApp.ProtectionType.RANGE
+    )
+  ];
+
+  const result = {
+    spreadsheet: sh.getParent().getName(),
+    sheet: sh.getName(),
+    protections: protections.map(p => ({
+      description: p.getDescription(),
+      range: p.getProtectionType() ===
+        SpreadsheetApp.ProtectionType.SHEET
+        ? 'Entire sheet'
+        : p.getRange().getA1Notation(),
+      canEdit: p.canEdit()
+    }))
+  };
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+

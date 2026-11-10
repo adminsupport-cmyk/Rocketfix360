@@ -1,0 +1,11 @@
+const test=require('node:test');const assert=require('node:assert/strict');
+const {validate,earnings}=require('../functions/core');
+const base={posId:'78360299',paymentDate:'2026-11-10',first:'Rocketfix',email:'N/A',received:1500,discount:0,tip:0,shippingFee:0,items:[{kind:'editing',existingId:'RF52469R',orderType:'Family',amount:1500}]};
+test('editing-only transaction balances correctly',()=>{const o=validate(base);assert.equal(o.due,1500);assert.equal(o.editPaid,1500);assert.equal(o.framePaid,0);assert.equal(o.excess,0);});
+test('overpayment stored as excess not tips',()=>{const o=validate({...base,received:1700});assert.equal(o.excess,200);assert.equal(o.tip,0);assert.equal(o.due,1500);});
+test('underpaid order rejected',()=>assert.throws(()=>validate({...base,received:1400}),/Received below/));
+test('invalid editing order ID rejected',()=>assert.throws(()=>validate({...base,items:[{kind:'editing',existingId:'RF001',amount:1500}]}),/Invalid editing ID/));
+test('mixed editing frame and shipping allocation',()=>{const o=validate({...base,received:4100,shippingFee:100,items:[{kind:'editing',existingId:'RF52469R',amount:1500},{kind:'frame',existingId:'DB0S1',amount:2500,size:'18x26'}]});assert.equal(o.due,4100);assert.equal(o.editPaid,1500);assert.equal(o.framePaid,2600);});
+test('personalized letter commission and tip',()=>{const o=validate({...base,received:2300,tip:100,tipRecipient:'Joyce',items:[{kind:'frame',existingId:'DB0S1',amount:2000,addOnType:'Personalized Letter',addOnFont:'Cursive',addOnColor:'Pink',addOnMessage:'N/A',addOnCommissionRecipient:'Renz Malenab'}]});const e=earnings(o);assert.equal(o.due,2300);assert.equal(e.length,2);assert.equal(e[0].amount,100);assert.equal(e[1].amount,50);assert.equal(e[1].letterSale,200);});
+test('duplicate item key rejected',()=>assert.throws(()=>validate({...base,items:[base.items[0],base.items[0]]}),/Duplicate order ID/));
+test('linked editing frame validation',()=>assert.throws(()=>validate({...base,items:[{...base.items[0],frameOrderId:'AB1C2'}]}),/Frame link missing/));
