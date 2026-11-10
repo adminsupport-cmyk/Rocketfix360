@@ -1,6 +1,10 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),{spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
+function validateViberActivation(policy,evidence){
+ if(!policy.automaticDeliveryActivatedAt)return;
+ if(policy.controlledVerificationEnabled!==false||!Number.isFinite(Date.parse(policy.automaticDeliveryActivatedAt))||evidence?.project!=='rocketfix-360-staging'||evidence.database!=='rocketfix360database'||evidence.orderSaved!==true||evidence.orderVersion<2||evidence.notificationEventCount!==1||evidence.eventStatus!=='SENT'||evidence.provider!=='VIBER'||evidence.providerResponseRecorded!==true||evidence.attempts!==1||evidence.attemptLogCount!==1||evidence.refreshAndEditVerified!==true)throw Error('Automatic Viber activation requires successful controlled Firebase remittance and duplicate-protection evidence');
+}
 function validateTarget(config,confirmation){
  const id=config?.projectId;
  if(config?.confirmedSeparateStaging!==true||!id||!/^[a-z][a-z0-9-]*-staging(?:-[a-z0-9]+)*$/.test(id)||confirmation!==id)throw Error('Confirm a separate project ending in -staging (or -staging-<suffix>); production/default projects are refused');
@@ -22,6 +26,9 @@ function isInvokerOnlyFailure(output,names){
 async function main(){
  const args=process.argv.slice(2),configPath=args[args.indexOf('--config')+1],confirmation=args[args.indexOf('--confirm-project')+1];
  if(!args.includes('--config')||!args.includes('--confirm-project'))throw Error('Usage: npm run deploy:staging -- --config staging/project.json --confirm-project YOUR_PROJECT-staging');
+ const viberPolicy=require('../functions/viber-policy.json');
+ const evidencePath=path.join(root,'staging/viber-remittance-verification.json');
+ validateViberActivation(viberPolicy,fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,'utf8')):null);
  const config=JSON.parse(fs.readFileSync(path.resolve(root,configPath),'utf8')),id=validateTarget(config,confirmation),cli=require('./firebase-cli.cjs').cliPath();
  const run=(exe,argv,options={})=>{const r=spawnSync(exe,argv,{cwd:root,stdio:'inherit',...options});if(r.error)throw r.error;if(r.status!==0)throw Error('Staging command failed; deployment stopped');};
  // Contact only the explicitly confirmed staging project; never enumerate or select other projects.
@@ -60,4 +67,4 @@ async function main(){
  console.log('Staging URL: https://'+id+'.web.app');
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={validateTarget,assertFunctionInventory,isInvokerOnlyFailure};
+module.exports={validateViberActivation,validateTarget,assertFunctionInventory,isInvokerOnlyFailure};

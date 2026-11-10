@@ -1,0 +1,24 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "verifiedAt": "2026-11-10T08:18:01.745Z",
+  "posId": "83946792",
+  "eventId": "83946792_VIBER",
+  "orderSaved": true,
+  "orderVersion": 2,
+  "received": 100,
+  "due": 100,
+  "excess": 0,
+  "notificationEventCount": 1,
+  "eventStatus": "SENT",
+  "provider": "VIBER",
+  "providerResponseRecorded": true,
+  "attempts": 1,
+  "attemptLogCount": 1,
+  "attemptStatuses": [
+    "SENT"
+  ],
+  "controlledVerification": true,
+  "refreshAndEditVerified": true,
+  "automaticStagingEnabled": false
+}

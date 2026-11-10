@@ -1,1 +1,6 @@
-{"controlledVerificationEnabled":true,"controlledCustomer":"TEST VIBER INTEGRATION 20261110","approvedChannelName":"REMIT - RF","automaticDeliveryActivatedAt":null}
+{
+  "controlledVerificationEnabled": false,
+  "controlledCustomer": "TEST VIBER INTEGRATION 20261110",
+  "approvedChannelName": "REMIT - RF",
+  "automaticDeliveryActivatedAt": "2026-11-10T08:18:35.591Z"
+}

@@ -14,3 +14,11 @@ test('unmarked events and emulators never look up channel credentials',async()=>
  assert.equal((await adapter(read,{GCLOUD_PROJECT:'rocketfix-360-staging'})({}, {type:'VIBER',stagingTest:true})).simulated,true);
  assert.equal((await adapter(read,{GCLOUD_PROJECT:'demo-rocketfix-360',FUNCTIONS_EMULATOR:'true'})({}, {type:'VIBER',stagingTest:true,controlledVerification:true})).simulated,true);assert.equal(reads,0);
 });
+test('deployment rejects automatic activation without controlled delivery and duplicate proof',()=>{
+ const {validateViberActivation}=require('../tools/deploy-staging.cjs');
+ const p={controlledVerificationEnabled:false,automaticDeliveryActivatedAt:'2026-11-10T10:00:00.000Z'};
+ const e={project:'rocketfix-360-staging',database:'rocketfix360database',orderSaved:true,orderVersion:2,notificationEventCount:1,eventStatus:'SENT',provider:'VIBER',providerResponseRecorded:true,attempts:1,attemptLogCount:1,refreshAndEditVerified:true};
+ assert.doesNotThrow(()=>validateViberActivation(p,e));
+ for(const patch of [{eventStatus:'REVIEW'},{notificationEventCount:2},{attempts:2},{refreshAndEditVerified:false},{project:'rocketfix-360'},{orderVersion:1}])assert.throws(()=>validateViberActivation(p,{...e,...patch}));
+ assert.throws(()=>validateViberActivation(p,null));
+});

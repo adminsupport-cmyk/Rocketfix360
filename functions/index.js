@@ -277,7 +277,7 @@ exports.mirrorOutbox=onDocumentCreated({database:'rocketfix360database',document
 exports.integrationStatus=call(['owner','admin'],async()=>{
  const [mirrors,notifications]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get()]);
  const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
- return {sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:notificationPolicy.externalSendingAuthorized};
+ return {sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
 });
 exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  if(!/^[0-9]{8}_SHEETS_[0-9]+$/.test(String(eventId)))throw Error('Invalid mirror event');

@@ -168,3 +168,8 @@ The user approved the recovered-branch GitHub backup. An HTTPS dry-run push fail
 
 ### Controlled Firebase-to-Viber staging phase
 - Prepared one-use transaction-bound Viber verification, fixture-only Submit Remittance and immutable activation guards. All 57 unit tests and 21 emulator test records pass; syntax/build pass. Automatic Viber delivery remains off until deployed browser verification passes.
+
+- Deployed controlled version `87466a6` to `rocketfix-360-staging`; actual Owner browser Submit Remittance saved fictional POS `83946792`, editing ID `RF31599A`, ₱100 test amount, no customer email.
+- Event `83946792_VIBER`: SENT/VIBER, exactly one event, one attempt and one acceptance log. Browser refresh and original Update Transaction saved version 2 with the same amount and unchanged event/attempt count. Exact request replays and duplicate consumers are additionally covered by emulator tests.
+- Final activation candidate: 59/59 unit tests, 21/21 emulator records, checks/build and editing/frame/combined browser regressions pass. Browser field inventory explicitly accounts for the added fictional-test acknowledgement while preserving all original fields.
+- Future-only activation cutoff set to `2026-11-10T08:18:35.591Z`; controlled verification disabled after its one successful message. Activation deployment pending. No additional test messages will be sent. Sheets automatic/manual writes remain blocked pending verified test destinations; email disabled.
