@@ -23,7 +23,7 @@ const {applyRecordEdit}=require('./record-edits');
 const {dashboardTotals}=require('./dashboard');
 const {processMirror}=require('./sheets-mirror');
 const {createSheetsTransport}=require('./sheets-transport');
-const {fixtures,fixtureContext,isLocal,validateFixtureOrder}=require('./staging-orders');
+const {fixtures,fixtureContext,paymentContext,isLocal,validateFixtureOrder}=require('./staging-orders');
 admin.initializeApp();
 const db=getFirestore(admin.app(),'rocketfix360database'), REGION='asia-southeast1';
 const {assertStaging,assertStagingOrder,assertFinancialTesting}=require('./runtime');
@@ -85,13 +85,13 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const verificationRef=db.doc('stagingConfig/viberControlledVerification');
   const verification=await t.get(verificationRef);
   const cfg=await t.get(db.doc('stagingConfig/pricing'));
-  const test=fixtureContext(order,cfg.data()||{},process.env,notificationPolicy.allowedTestEmails);
+  const test=paymentContext(order,cfg.data()||{},process.env,notificationPolicy.allowedTestEmails);
   const clean=validate(quoteOrder(order,test.config,order.stagingTest!==true));
   const priorSnap=await t.get(doc),prior=priorSnap.exists?priorSnap.data():null;
   if(prior && !expectedVersion)throw Error('POS ID exists. Open it in history to edit; never resubmit a payment.');
   if(!prior && expectedVersion)throw Error('Order was not found; refresh without creating duplicate IDs');
   if(prior){
-    if(!isLocal()&&prior.stagingTest!==true)throw Error('An existing non-test order cannot be converted into a fictional test order');
+    if((prior.stagingTest===true)!==test.stagingTest)throw Error('Real and fictional orders cannot be converted into each other');
     if(prior.voidedAt)throw Error('Voided transaction cannot be edited');
     if(prior.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');
     if(prior.items.some(old=>!clean.items.some(x=>x.kind===old.kind&&x.existingId===old.existingId)))throw Error('Existing linked order IDs cannot be deleted or changed');
@@ -109,7 +109,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const keys=newItems.map(it=>db.doc('orderKeys/'+encodeURIComponent(it.kind+'|'+it.existingId)));
   const keySnaps=await Promise.all(keys.map(k=>t.get(k)));
   keySnaps.forEach((s,i)=>{if(s.exists && s.data().posId!==id)throw Error('Order ID already used: '+newItems[i].existingId);});
-  const target={...clean,stagingTest:true,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:'FICTIONAL TEST ORDER',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
+  const target={...clean,stagingTest:test.stagingTest,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:test.stagingTest?'FICTIONAL TEST ORDER':null,paymentMode:test.paymentMode||'FICTIONAL_TEST',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
   t.set(doc,target);
   t.create(db.doc('orders/'+id+'/revisions/'+target.version),{...target});
   keys.forEach((key,i)=>t.set(key,{posId:id,itemKey:newItems[i].itemKey,kind:newItems[i].kind,orderId:newItems[i].existingId,createdAt:currentTime}));
@@ -127,7 +127,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
    if(target.email&&target.email.toUpperCase()!=='N/A')t.create(db.doc('notificationOutbox/'+id+'_CUSTOMER'),{...eligibility(notificationPolicy,currentTime),type:'CUSTOMER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
    const controlledVerification=viberPolicy.controlledVerificationEnabled===true&&!verification.exists&&[target.first,target.last].filter(Boolean).join(' ')===viberPolicy.controlledCustomer;
    if(controlledVerification)t.create(verificationRef,{posId:id,eventId:id+'_VIBER',createdAt:currentTime});
-   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{...eligibility(notificationPolicy,currentTime),stagingTest:true,controlledVerification,viberActivation:viberPolicy.automaticDeliveryActivatedAt,type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
+   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{...eligibility(notificationPolicy,currentTime),stagingTest:target.stagingTest,controlledVerification,viberActivation:viberPolicy.automaticDeliveryActivatedAt,type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
   }
   const outcome={posId:id,version:target.version,wasEdit:!!prior,record:target};
   t.create(replayRef,{fingerprint,outcome,createdAt:currentTime});return outcome;

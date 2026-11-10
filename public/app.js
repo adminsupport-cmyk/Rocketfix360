@@ -36,7 +36,7 @@ async function dispatch(method,args){
   const record=values[0];if(values[1])return unsupported('Google Drive proof upload');
   if(!requests.has(record))requests.set(record,crypto.randomUUID());
   pending.set(record.posId,requests.get(record));
-  const result=await invoke('saveOrder',{order:{...adapter.toFirebase(record),...(window.firebasePOS.fixtureMode?{stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1'}:{})},expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
+  const result=await invoke('saveOrder',{order:{...adapter.toFirebase(record),...(window.firebasePOS.fixtureMode?{stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1'}:{stagingTest:false,paymentMode:'AGREED_EDITING_V1'})},expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
   const order=result.record||(await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)})).order;pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
  }
  case 'delete':await invoke('voidOrder',{posId:values[0],expectedVersion:values[1],reason:'Confirmed by employee through original POS deletion workflow'});return {ok:true,deleted:true,posId:values[0]};

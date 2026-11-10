@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T13:38:39.789Z",
+  "checkedAt": "2026-11-10T14:48:51.140Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -128,15 +128,16 @@
   "assets": [
     {
       "name": "index.html",
-      "sha256": "51ea462f2c8335610df66ee2033fb430b445d307fdc96f037a845458d39902ba"
+      "sha256": "f675652f59fa472d9042123cc6fb5222b9b39ee23daf2275c766e86ea9a220a3"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "9162886705f525e9f11afc0dd2c41bc523695351e68135da8f0c75be956dc47a"
+      "sha256": "f111f829b5b7c02047b8e45d169a771e475a9d0f92c203c0faa073d875d1c817"
     }
   ],
-  "realNotificationsEnabled": false,
-  "financialWrites": "BLOCKED_OUTSIDE_LOCAL_DEMO",
+  "realCustomerNotificationsEnabled": false,
+  "fictionalStagingViberEnabled": true,
+  "financialWrites": "AGREED_EDITING_ONLY_EXACT_PAYMENT; FRAMES_AND_UNAPPROVED_ADJUSTMENTS_BLOCKED",
   "ownerDeployedAcceptance": "NOT_VERIFIED; no authorized browser session used",
   "fullParity": false
 }

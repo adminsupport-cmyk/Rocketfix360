@@ -1,3 +1,13 @@
+# Editing-only agreed-price payments — November 10, 2026
+
+Current branch: `feature/staging-test-remittance-manual-mirror`. User authorized real editing-only payments at staff-entered agreed prices. The unchecked fictional-test option now submits `AGREED_EDITING_V1`; the server records `stagingTest: false` and rejects frames, linked frame IDs, letters, nonpositive service prices, unsupported methods, discounts, tips, shipping charges and non-exact payments. These additional business-rule approvals remain outstanding. Existing calculations were not changed. Frame fixtures remain fictional-only. Real/fictional records cannot be converted in either direction, including during corrections.
+
+Stable request identities, atomic financial writes/outbox creation, revisions, audit logs, staff-role checks, order-ID reservations and stale-version protections remain. Real payment events are not eligible for fictional staging Viber delivery; email remains disabled. Test REMIT rejects real orders; production Sheets remain disabled. No real payment is created during deployment verification. Production readiness is not established. Real-order voiding remains unavailable pending the existing financial policy approval.
+
+Validation: 67 unit tests, 23 complete emulator test records, new Sales browser exact-payment save and original Owner editing/framing/combined sample browser suite pass. Tests include real identity, exact multi-item decimal allocation, unauthorized role rejection, replay without extra revision/payment, corrections without new outbox events, real/fictional conversion rejection, and frame/Excess rejection. Browser tests use demo emulators only; actual customer payments are not test fixtures. Syntax/build pass. Deployed only to `rocketfix-360-staging` / `rocketfix360database`; all 24 live callable preflights return 204 and unauthenticated calls return 401. Deployed HTML/bundle hashes match the tested artifact. Callable Invoker configuration is preserved and both event workers remain private. No live customer payment was created for verification. Refresh the staging site, leave fictional-test mode unchecked, enter editing services and the exact agreed amount received.
+
+---
+
 # Modern dark workspace and integration preparation — November 10, 2026
 
 Backup: `backup/firebase-auth-verified-ffc1324` (verified Firebase-only login). Working branch: `feature/modern-admin-pos-integrations`. Original reference sources preserved; no main merge.

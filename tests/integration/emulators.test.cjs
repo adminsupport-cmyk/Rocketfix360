@@ -29,6 +29,22 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  const preflight=await fetch(endpoint+name,{method:'OPTIONS',headers});assert.equal(preflight.status,204,name);assert.equal(preflight.headers.get('access-control-allow-origin'),headers.Origin,name);
  await assert.rejects(call(name,{},'none'),{code:'UNAUTHENTICATED'});}
  });
+ await t.test('real agreed editing payment is atomic, isolated from fixtures and idempotent',async()=>{
+ const order={paymentMode:'AGREED_EDITING_V1',stagingTest:false,posId:'88776655',first:'Customer',email:'customer@example.com',paymentDate:'2026-11-10',method:'GCash',received:300.3,items:[{kind:'editing',existingId:'RF54321A',amount:100.1},{kind:'editing',existingId:'RF54322A',amount:200.2}]};
+ const payload={order,requestId:'real-editing-payment-88776655'};
+ await assert.rejects(call('saveOrder',payload,'editor'),{code:'PERMISSION_DENIED'});
+ const saved=await call('saveOrder',payload,'sales');assert.equal(saved.record.stagingTest,false);assert.equal(saved.record.paymentMode,'AGREED_EDITING_V1');assert.equal(saved.record.received,300.3);assert.equal(saved.record.excess,0);assert.equal(saved.record.editPaid,300.3);
+ const replay=await call('saveOrder',payload,'sales');assert.equal(replay.version,1);
+ const event=(await db.doc('notificationOutbox/88776655_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(require('../../functions/viber-staging').authorized(event),false);
+ await assert.rejects(call('saveOrder',{order:{...order,received:301},expectedVersion:1,requestId:'real-editing-excess-rejected'},'sales'),/Excess/);
+ await assert.rejects(call('saveOrder',{order:{...order,items:[{...order.items[0],kind:'frame'}]},expectedVersion:1,requestId:'real-editing-frame-rejected'},'sales'),/Only standalone editing/);
+ const edited=await call('saveOrder',{order:{...order,remarks:'Corrected'},expectedVersion:1,requestId:'real-editing-correction-88776655'},'sales');assert.equal(edited.version,2);
+ assert.equal((await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size,2);
+ const fake={...order,stagingTest:true,paymentMode:undefined,first:'TEST',email:'N/A',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1',fixtureAcknowledgement:'FICTIONAL TEST ORDER'};delete fake.paymentMode;
+ await assert.rejects(call('saveOrder',{order:fake,expectedVersion:2,requestId:'real-editing-conversion-rejected'},'sales'),/cannot be converted/);
+ // Remove only this emulator scenario's records so shared legacy totals remain unchanged.
+ for(const collection of ['orders/88776655/revisions','notificationOutbox','integrationOutbox','audit','requests','orderKeys']){const query=collection.includes('/')?db.collection(collection):db.collection(collection);const rows=await query.get();for(const row of rows.docs)if(collection.includes('/')||row.data().posId===order.posId||row.data().outcome?.posId===order.posId)await row.ref.delete();}await db.doc('orders/88776655').delete();
+ });
  await t.test('myAccess reads active Owner membership from the named database',async()=>{
  assert.equal(db.databaseId,'rocketfix360database');const profile=await call('myAccess');assert.equal(profile.uid,'test-owner');assert.equal(profile.role,'owner');assert.equal(profile.name,'Test owner');
  });
