@@ -28,6 +28,7 @@ function setPOSAccess(profile){
  const gateStart=html.indexOf('<div id="rfDeviceGate">'),gateEnd=html.indexOf('<aside id="rfPosUpdateBanner"');
  if(gateStart<0||gateEnd<gateStart)throw Error('Original login boundary changed');
  html=html.slice(0,gateStart)+fs.readFileSync(path.join(root,'tools/templates/login.html'),'utf8')+html.slice(gateEnd);
+ html=html.replace(/<title>[^<]*<\/title>/,'<title>Rocketfix360 · Admin Workspace</title>');
  html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/login.css'),'utf8')+'</style></head>');
  html=html.replaceAll('<?= rfPosWebUrl ?>','/');
  html=html.replaceAll('Save Remittance (LIVE)','Save Remittance').replaceAll('Update Transaction (LIVE)','Update Transaction');
@@ -73,6 +74,7 @@ function setPOSAccess(profile){
   .replaceAll('rfDeviceReady','posAuthorized').replaceAll('rfDeviceStartApp','startPOS')
   .replaceAll('rfDeviceUser','employeeBadge').replaceAll('rfDeviceInit();','');
  html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
+ html=html.replace(/<title>[^<]*<\/title>/,'<title>Rocketfix360 · Admin Workspace</title>');
  html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/modern.css'),'utf8')+'</style></head>');
  html=html.replace(/<section class="tab" id="settings">[\s\S]*?<\/section>/,fs.readFileSync(path.join(root,'tools/templates/settings.html'),'utf8'));
  html=html.replace(/<nav>[\s\S]*?<\/nav>/,'<nav><button class="active" data-tab="dashboard">Dashboard</button><button data-tab="new">Admin POS</button><button data-tab="editingDatabase">Editing Database</button><button data-tab="frameDatabase">Frame Database</button><button data-tab="history">Remittances</button><button data-tab="daily">Reports</button><button data-tab="settings">Settings</button></nav>');

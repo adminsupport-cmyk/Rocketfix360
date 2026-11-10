@@ -1,0 +1,6 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "anonymousFinancialRead": "DENIED",
+  "httpStatus": 403
+}
