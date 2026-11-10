@@ -56,5 +56,21 @@
   "headerAndValidationsVerified": true,
   "serviceAccountWriteVerified": true,
   "productionWritesEnabled": false,
-  "nativeGoogleSheetsVisualReview": true
+  "nativeGoogleSheetsVisualReview": true,
+  "finalOrderVersion": 7,
+  "finalRows": [
+    {
+      "editingId": "RF31599A",
+      "row": 6,
+      "lastSyncedVersion": 7
+    },
+    {
+      "editingId": "RF55058A",
+      "row": 7,
+      "lastSyncedVersion": 7
+    }
+  ],
+  "finalUniqueRowCount": 2,
+  "realValidationFailurePaymentUnchanged": true,
+  "uncertainWriteReconciliationTestScope": "Automated API doubles and Firebase emulators; no artificial live timeout was induced."
 }

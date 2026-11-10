@@ -1,0 +1,93 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "checkedAt": "2026-11-10T13:11:14.986Z",
+  "testPosId": "83946792",
+  "orderVersion": 6,
+  "paymentStatus": "SYNCED",
+  "received": 320,
+  "due": 310,
+  "tip": 10,
+  "excess": 10,
+  "editingItems": [
+    {
+      "editingId": "RF31599A",
+      "itemKey": "83946792|editing|RF31599A",
+      "paid": 100,
+      "discount": 0,
+      "mainFile": "https://example.invalid/rocketfix-staging-main.pdf",
+      "noteFile": "https://example.invalid/rocketfix-staging-note.pdf"
+    },
+    {
+      "editingId": "RF55058A",
+      "itemKey": "83946792|editing|RF55058A",
+      "paid": 200,
+      "discount": 0,
+      "mainFile": "",
+      "noteFile": ""
+    }
+  ],
+  "mirrors": [
+    {
+      "editingId": "RF55058A",
+      "itemKey": "83946792|editing|RF55058A",
+      "spreadsheetId": "1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc",
+      "sheetId": 1129443859,
+      "row": 7,
+      "status": "MIRRORED",
+      "lastSyncedVersion": 5,
+      "lastSuccessfulSyncAt": "2026-11-10T08:55:19.049Z",
+      "lastError": null,
+      "attempts": 1
+    },
+    {
+      "editingId": "RF31599A",
+      "itemKey": "83946792|editing|RF31599A",
+      "spreadsheetId": "1BhVf1dDLobACS7tkzrtcCuB4GQRH_KsFzizoxhdCHVc",
+      "sheetId": 1129443859,
+      "row": 6,
+      "status": "FAILED",
+      "lastSyncedVersion": 5,
+      "lastSuccessfulSyncAt": "2026-11-10T08:54:49.794Z",
+      "lastError": "REMIT_VALIDATION_REJECTED",
+      "attempts": 1
+    }
+  ],
+  "mirrorAttempts": [
+    {
+      "itemKey": "83946792|editing|RF31599A",
+      "version": 5,
+      "attempt": 1,
+      "state": "SYNCED"
+    },
+    {
+      "itemKey": "83946792|editing|RF31599A",
+      "version": 4,
+      "attempt": 1,
+      "state": "SYNCED"
+    },
+    {
+      "itemKey": "83946792|editing|RF31599A",
+      "version": 3,
+      "attempt": 1,
+      "state": "SYNCED"
+    },
+    {
+      "itemKey": "83946792|editing|RF55058A",
+      "version": 5,
+      "attempt": 1,
+      "state": "SYNCED"
+    }
+  ],
+  "previewCount": 6,
+  "viberEvents": [
+    {
+      "eventId": "83946792_VIBER",
+      "status": "SENT",
+      "attempts": 1,
+      "provider": "VIBER"
+    }
+  ],
+  "viberPolicyHash": "7e81a7235a841a2f855613e9d37213ee4a27c764cf0332741c8e8f250e25eb0d",
+  "productionSheetsWritesEnabled": false
+}

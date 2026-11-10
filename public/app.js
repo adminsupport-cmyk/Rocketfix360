@@ -77,7 +77,7 @@ async function dispatch(method,args){
 }
 initWorkspace();
 window.posAPI={run:adapter.runner(dispatch)};
-window.firebasePOS={isDemo:useEmulators,loadMoreHistory,get historyState(){return {hasMore:!!historyCursor,loaded:historyCache.size};},get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
+window.firebasePOS={isDemo:useEmulators,loadMoreHistory,async loadAllHistory(){const all=new Map();let cursor=null;do{const page=await invoke('listOrders',{limit:150,cursor});for(const o of page.orders)all.set(o.posId,o);cursor=page.nextCursor;}while(cursor);historyCache.clear();for(const [id,o] of all)historyCache.set(id,o);historyCursor=null;historyInitialized=true;window.updateHistoryRecords(cachedHistory());return cachedHistory();},get historyState(){return {hasMore:!!historyCursor,loaded:historyCache.size};},get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
 bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
  save:record=>dispatch('execute',['save',[record,null]]),status:posId=>dispatch('execute',['status',[posId]]),
  acceptReceipt:record=>window.acceptCommittedReceipt(record),editPayment:order=>window.loadPaymentCorrection(adapter.fromFirebase(order)),

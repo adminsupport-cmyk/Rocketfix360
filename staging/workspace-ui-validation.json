@@ -11,8 +11,8 @@
   "pageOverflows": 0,
   "runtimeErrors": [],
   "beforeBundleBytes": 346710,
-  "afterBundleBytes": 259547,
-  "bundleReductionPercent": 25.1,
+  "afterBundleBytes": 260572,
+  "bundleReductionPercent": 24.8,
   "unitTests": 66,
   "emulatorTestRecords": 22,
   "browserSuites": [
@@ -21,5 +21,11 @@
     "Editable databases and optimistic locking",
     "Workspace responsive layout, fields, keyboard, dialogs and settings cancel"
   ],
-  "artifacts": ".runtime/workspace/{before,after}"
+  "artifacts": ".runtime/workspace/{before,after}",
+  "liveOwnerUiVerified": true,
+  "deployedCallableChecks": 24,
+  "liveReportReceived": 320,
+  "liveReportEditingAllocated": 300,
+  "completeJsonExportVerified": true,
+  "mobileIntegrationFieldLabelsVerified": true
 }

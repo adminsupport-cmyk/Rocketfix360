@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T08:23:05.162Z",
+  "checkedAt": "2026-11-10T13:11:54.348Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -103,16 +103,36 @@
       "name": "retrySheetsMirror",
       "preflight": 204,
       "unauthenticated": 401
+    },
+    {
+      "name": "previewRemitMirror",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "syncRemitMirror",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "reconcileRemitMirror",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "remitMirrorStatuses",
+      "preflight": 204,
+      "unauthenticated": 401
     }
   ],
   "assets": [
     {
       "name": "index.html",
-      "sha256": "85fd8fb4f106b8ae6fb9c67fdf5772f33ca21edc4b19a799979bfcbe90210ee6"
+      "sha256": "c197a0a9713eb45addbabcba075771e87684c9f27b6b63ff74663d4839b461a9"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "101d2e84f6957c7734edac1f0f1688513d203a1659648b2b5f5fd1dee11425a0"
+      "sha256": "f2c157a8515f602b046604e7eadaf16f8a3ed643b4b497fa33e54b3076308108"
     }
   ],
   "realNotificationsEnabled": false,

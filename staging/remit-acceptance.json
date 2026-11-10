@@ -1,9 +1,9 @@
 {
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
-  "checkedAt": "2026-11-10T08:55:19.602Z",
+  "checkedAt": "2026-11-10T13:13:22.463Z",
   "testPosId": "83946792",
-  "orderVersion": 5,
+  "orderVersion": 7,
   "paymentStatus": "SYNCED",
   "received": 320,
   "due": 310,
@@ -35,8 +35,8 @@
       "sheetId": 1129443859,
       "row": 7,
       "status": "MIRRORED",
-      "lastSyncedVersion": 5,
-      "lastSuccessfulSyncAt": "2026-11-10T08:55:19.049Z",
+      "lastSyncedVersion": 7,
+      "lastSuccessfulSyncAt": "2026-11-10T13:12:43.865Z",
       "lastError": null,
       "attempts": 1
     },
@@ -47,8 +47,8 @@
       "sheetId": 1129443859,
       "row": 6,
       "status": "MIRRORED",
-      "lastSyncedVersion": 5,
-      "lastSuccessfulSyncAt": "2026-11-10T08:54:49.794Z",
+      "lastSyncedVersion": 7,
+      "lastSuccessfulSyncAt": "2026-11-10T13:12:03.570Z",
       "lastError": null,
       "attempts": 1
     }
@@ -77,9 +77,21 @@
       "version": 5,
       "attempt": 1,
       "state": "SYNCED"
+    },
+    {
+      "itemKey": "83946792|editing|RF31599A",
+      "version": 7,
+      "attempt": 1,
+      "state": "SYNCED"
+    },
+    {
+      "itemKey": "83946792|editing|RF55058A",
+      "version": 7,
+      "attempt": 1,
+      "state": "SYNCED"
     }
   ],
-  "previewCount": 5,
+  "previewCount": 8,
   "viberEvents": [
     {
       "eventId": "83946792_VIBER",
