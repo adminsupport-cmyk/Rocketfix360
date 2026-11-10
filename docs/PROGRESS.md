@@ -200,3 +200,5 @@ The user approved the recovered-branch GitHub backup. An HTTPS dry-run push fail
 
 - Final Hosting patch deployed; live Owner mobile integration cards retain readable field labels and show both REMIT rows MIRRORED/v7 plus Viber SENT/one attempt. Complete JSON export is explicitly verified against fresh paginated reads. Final UI status wording correctly identifies the verified test destination.
 - Anonymous direct access to the saved financial record in the named staging database returned 403/PERMISSION_DENIED. All 24 deployed callable authentication/preflight and asset-hash checks pass. Original production workbooks and production Firebase remain untouched; GitHub main still `139f7eaa56ed3925c835247ad8e9d7ccb0557ed4`.
+
+- Release `ac6de7b` is deployed to https://rocketfix-360-staging.web.app with final workspace branding. Post-release verification passed all 24 callable CORS/authentication checks and exact HTML/bundle hashes. Generated emulator logs are retained under `.runtime`; the tracked log was restored without resetting code or branches.
