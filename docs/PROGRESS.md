@@ -1,3 +1,13 @@
+# Invoker policy resolved — November 10, 2026
+
+Configured all 17 deployed HTTPS callable services in `rocketfix-360-staging` with Google's documented `run.googleapis.com/invoker-iam-disabled: true` setting (equivalent to `gcloud run services update --no-invoker-iam-check`). The managed requireInvokerIam constraint is not enforced; the legacy constraint was not found. Domain Restricted Sharing is unchanged. No allUsers IAM grants or organization-policy changes were made. The v1 annotation update avoids a managed-function revision-name conflict observed with the v2 field patch.
+
+Actual live checks: **17/17 staging OPTIONS responses return 204 with the exact staging origin; 17/17 unauthenticated POSTs return 401 UNAUTHENTICATED.** `deliverOutbox` retains its Invoker IAM check, has no public Invoker bindings, targets `rocketfix360database`, and rejects unauthenticated invocation with 403. Real notifications remain disabled. Existing Firebase Auth, role, pricing, transaction and rules code was not changed. Unit tests 36/36 and emulator test records 18/18 pass; syntax/build pass.
+
+The deployment post-step now audits the effective policy and deployed callable inventory, applies only the supported service annotation, and verifies outbox privacy. It preserves service specs and IAM bindings. Production projects and GitHub main were untouched. Owner UI verification remains unconfirmed: the browsers available to automation still show sign-in despite the user's separate session confirmation; no Owner login success or dashboard/report UI pass is claimed. See [LIVE_STAGING_CHECKS.json](LIVE_STAGING_CHECKS.json) for actual deployed results.
+
+---
+
 # Named database and callable CORS deployment — November 10, 2026
 
 Deployed code/rules/indexes/Hosting only to `rocketfix-360-staging`, using existing `rocketfix360database`; no database was created. All backend reads, writes, Owner staff membership and deliverOutbox trigger explicitly target that database. HTTPS wrappers and standalone myAccess now declare public invocation with staging-origin CORS; Firebase Auth, roles, pricing, transaction replay and deny-all client rules remain intact. Disabled notifications no longer declare unused provider secrets. deliverOutbox remains private and real sending stays off.

@@ -11,6 +11,7 @@
   "callables": [
     {
       "name": "myAccess",
+      "invokerIamDisabled": true,
       "preflightStatus": 204,
       "allowOrigin": "https://rocketfix-360-staging.web.app",
       "postStatus": 401,
@@ -19,94 +20,106 @@
     },
     {
       "name": "listOrders",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "getOrder",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "saveOrder",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "updateItemStatus",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "voidOrder",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "dashboard",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "notificationStatus",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "retryNotification",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "getPricing",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "savePricing",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "quote",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "listStaff",
+      "invokerIamDisabled": true,
       "preflightStatus": 204,
       "allowOrigin": "https://rocketfix-360-staging.web.app",
       "postStatus": 401,
@@ -115,53 +128,69 @@
     },
     {
       "name": "setStaff",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "earningsReport",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "salesReport",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     },
     {
       "name": "saveLateLetter",
-      "preflightStatus": 403,
-      "allowOrigin": null,
-      "postStatus": 403,
-      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "invokerIamDisabled": true,
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
       "publicInvoker": false
     }
   ],
   "outbox": {
+    "invokerIamDisabled": false,
+    "unauthenticatedStatus": 403,
     "database": "rocketfix360database",
     "publicInvoker": false
   },
   "externalSendingAuthorized": false,
+  "date": "2026-11-10",
+  "mode": "no-invoker-iam-check",
+  "iamGrantsChanged": false,
+  "organizationPoliciesChanged": false,
   "unitTests": {
-    "passed": 34,
+    "passed": 36,
     "failed": 0
   },
   "emulatorTests": {
     "passed": 18,
     "failed": 0
   },
-  "deployedCode": true,
-  "publicInvokerGrantSucceeded": false,
-  "organizationPolicyBypassed": false,
-  "authenticatedOwnerBrowserTest": "Blocked: required dashboard/listOrders/report preflights rejected by Cloud Run; available browser session remained on sign-in form",
-  "date": "2026-11-10"
+  "ownerBrowserTest": "Not verified: the accessible Codex and Chrome staging tabs remained at the sign-in form.",
+  "invokerConstraints": [
+    {
+      "constraint": "constraints/run.managed.requireInvokerIam",
+      "booleanPolicy": {}
+    },
+    {
+      "constraint": "constraints/run.requireInvokerIam",
+      "notFound": true
+    }
+  ]
 }
