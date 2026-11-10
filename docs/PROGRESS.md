@@ -1,3 +1,7 @@
+## Confirmed staging connection — November 10, 2026
+
+Created ignored `staging/project.json` from the supplied web configuration for `rocketfix-360-staging`. Prepared `.runtime/deploy` with matching browser config and backend allowlist; verified `rocketfix-360` is rejected and real sending remains disabled. Unit tests 34/34, emulator suite 16/16, syntax and build pass. Fixed esbuild staging artifact generation to use its asynchronous plugin API; added `--prepare-only` for offline deployment review. No remote Firebase deployment occurred: the staging-only app-access check reports expired Firebase CLI credentials. Reauthenticate, then run `npm run deploy:staging -- --config staging/project.json --confirm-project rocketfix-360-staging`. No production project or Sheets data was modified.
+
 # Fast-track staging — November 10, 2026
 
 Branch: `staging/firebase-pos-fast-track`, based on preserved `recovery/rocketfix360-32-transcript`. Fixed Firestore FieldValue imports and preservation of editor file/assignment workflow data during financial edits; initial notifications remain deduplicated. Fixed hidden role-navigation CSS. Added guarded separate-project deployment artifacts/script and portable emulator launch helpers.
