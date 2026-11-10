@@ -1,6 +1,6 @@
 # Private Google Drive payment proofs — staging only
 
-Target: `rocketfix-360-staging`, Firestore `rocketfix360database`. Supplied folder: `1HBnKsg81SyR3CKAH65bp3ryHclMqSNXt` (ROCKETFIX360 - PAYMENT PROOFS), confirmed by Owner as **My Drive**. OAuth client and connection were not configured at implementation time. No live proof upload or live Sheets write is claimed.
+Target: `rocketfix-360-staging`, Firestore `rocketfix360database`. Supplied folder: `1HBnKsg81SyR3CKAH65bp3ryHclMqSNXt` (ROCKETFIX360 - PAYMENT PROOFS), confirmed by Owner as **My Drive**. Live setup completed November 11, 2026: Owner-approved public-link removal, private folder/backend access, saved VERIFIED settings, one actual Drive upload and atomic Firebase proof attachment to fictional POS 83946792 v8 all passed. No live Sheets write was performed. See [live acceptance](../staging/drive-proof-live-acceptance.json).
 
 ## One-time My Drive connection
 
@@ -34,4 +34,8 @@ Select Shared Drive and grant `855901392227-compute@developer.gserviceaccount.co
 
 ## Acceptance status
 
-Automated tests use isolated Firebase emulators and a test Drive provider; they do not establish live Google Drive/OAuth integration. Complete the one-time connection, then verify a clearly labeled sample proof and fictional remittance through the POS, its stored Drive ID/link, private file access, and a **new row in the approved REMIT test copy only**. Do not update existing spreadsheet rows or mirror to production. Existing fictional Viber automation must be accounted for before creating any live sample remittance; no extra real channel messages are authorized by upload testing alone.
+Live acceptance completed November 11, 2026. The existing fictional POS **83946792** was updated from v7 to v8 through the actual POS file chooser and Update Transaction button. Exactly one private Drive file was created, checksum/size/parent verified, and its ID/link atomically attached in Firebase. Open proof displayed the labelled sample PDF in the native Drive viewer; settings and the database link persisted across page refreshes. Monetary values and the existing one-attempt SENT Viber event were unchanged. No new payment or notification was created.
+
+Automated validation remains 73 unit tests, 29 emulator test records and three browser suites (Drive API doubles), with 32 deployed access checks. Those prior checks were supplemented by the real Google OAuth/Drive/Firestore/browser acceptance, not replaced or claimed to have been rerun for the configuration change.
+
+No live Sheets mirroring was performed; existing REMIT rows were deliberately left unchanged. Production Sheets writes and real-order-to-test-workbook mirroring remain blocked. Any future live sample must account for existing fictional Viber automation before creating a new remittance. OAuth app Testing/production audience status was not independently inspected, so the testing-mode token-expiry caveat above remains relevant. Overall production parity/readiness remains outside this completed proof-storage setup.

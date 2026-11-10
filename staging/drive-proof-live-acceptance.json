@@ -1,0 +1,48 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "checkedAt": "2026-11-10T17:53:32.650Z",
+  "posId": "83946792",
+  "orderVersion": 8,
+  "folderId": "1HBnKsg81SyR3CKAH65bp3ryHclMqSNXt",
+  "connectionStatus": "VERIFIED",
+  "settingsVersion": 1,
+  "settingsPersistAfterBrowserRefresh": true,
+  "oauthConnectionStoredInSecretManager": true,
+  "oauthAccountMatchesFolderOwner": true,
+  "folderAndFilePrivate": true,
+  "uploadId": "b18283f3a4a43da376ef8c4572cd6fa0e677dfadaf789c76f6ea3b4a7de7d326",
+  "fileId": "1ZbsRea1RzVpRDhDk9AQql89rEtXT2pSl",
+  "proofUrl": "https://drive.google.com/file/d/1ZbsRea1RzVpRDhDk9AQql89rEtXT2pSl/view",
+  "sha256": "eec837b02cb90d68fb56ca456609ffc9549189404e33c1da2abb298aa13b7677",
+  "bytes": 865,
+  "uploadState": "ATTACHED",
+  "matchingDriveFiles": 1,
+  "uiUploadAndFirebaseConfirmationVerified": true,
+  "proofOpenedFromDatabaseInDriveViewer": true,
+  "proofPersistsAfterRefresh": true,
+  "moneyUnchanged": true,
+  "money": {
+    "received": 320,
+    "due": 310,
+    "discount": 0,
+    "tip": 10,
+    "excess": 10,
+    "editPaid": 300,
+    "framePaid": 0,
+    "shippingFee": 0,
+    "subtotal": 300
+  },
+  "notificationsUnchanged": true,
+  "notifications": [
+    {
+      "eventId": "83946792_VIBER",
+      "status": "SENT",
+      "attempts": 1,
+      "provider": "VIBER"
+    }
+  ],
+  "additionalViberMessagesSent": 0,
+  "existingSheetsRecordsModified": false,
+  "productionFirebaseModified": false
+}

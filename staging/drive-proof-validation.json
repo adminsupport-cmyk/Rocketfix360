@@ -1,17 +1,17 @@
 {
-  "checkedAt": "2026-11-10T17:26:55.025712+00:00",
+  "checkedAt": "2026-11-10T17:53:32.650Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "folderId": "1HBnKsg81SyR3CKAH65bp3ryHclMqSNXt",
   "folderName": "ROCKETFIX360 - PAYMENT PROOFS",
   "folderType": "MY_DRIVE_OWNER_CONFIRMED",
-  "oauthSecretConfigured": false,
+  "oauthSecretConfigured": true,
   "driveApiEnabled": true,
-  "backendFolderAccessVerified": false,
-  "publicSharingVerified": false,
-  "liveProofUploadVerified": false,
+  "backendFolderAccessVerified": true,
+  "publicSharingVerified": true,
+  "liveProofUploadVerified": true,
   "liveRemitMirrorVerified": false,
-  "liveProofFilesCreated": 0,
+  "liveProofFilesCreated": 1,
   "existingSpreadsheetRecordsModified": false,
   "unitTestsPassed": 73,
   "emulatorTestRecordsPassed": 29,
@@ -24,8 +24,17 @@
   "productionFirebaseModified": false,
   "realEmailSendingEnabled": false,
   "viberPolicyChanged": false,
-  "remainingBlocker": "Owner must create staging Desktop OAuth client and complete Google consent via connect-drive-oauth helper; folder privacy/access and live end-to-end must then be verified.",
+  "remainingBlocker": null,
   "deployedCallableChecksPassed": 32,
   "deployedAssetsMatchTestedArtifact": true,
-  "eventWorkersRemainPrivate": true
+  "eventWorkersRemainPrivate": true,
+  "liveAcceptanceFile": "staging/drive-proof-live-acceptance.json",
+  "liveTestPosId": "83946792",
+  "liveOrderVersion": 8,
+  "folderAndFilePrivate": true,
+  "verifiedSettingsPersistAfterRefresh": true,
+  "remainingLimitations": [
+    "No live Sheets mirroring performed; existing spreadsheet rows were deliberately not changed.",
+    "OAuth consent app Testing/production audience status was not independently inspected; Google testing-mode token expiry may require reconnecting."
+  ]
 }
