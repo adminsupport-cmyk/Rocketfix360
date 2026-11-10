@@ -5,6 +5,10 @@ function validateViberActivation(policy,evidence){
  if(!policy.automaticDeliveryActivatedAt)return;
  if(policy.controlledVerificationEnabled!==false||!Number.isFinite(Date.parse(policy.automaticDeliveryActivatedAt))||evidence?.project!=='rocketfix-360-staging'||evidence.database!=='rocketfix360database'||evidence.orderSaved!==true||evidence.orderVersion<2||evidence.notificationEventCount!==1||evidence.eventStatus!=='SENT'||evidence.provider!=='VIBER'||evidence.providerResponseRecorded!==true||evidence.attempts!==1||evidence.attemptLogCount!==1||evidence.refreshAndEditVerified!==true)throw Error('Automatic Viber activation requires successful controlled Firebase remittance and duplicate-protection evidence');
 }
+function validateRealViberActivation(policy,evidence){
+ if(!policy.realAutomaticDeliveryActivatedAt)return;
+ if(policy.controlledRealVerificationEnabled!==false||!Number.isFinite(Date.parse(policy.realAutomaticDeliveryActivatedAt))||evidence?.project!=='rocketfix-360-staging'||evidence.database!=='rocketfix360database'||evidence.posId!==policy.realVerificationPosId||evidence.eventStatus!=='SENT'||evidence.provider!=='VIBER'||evidence.providerResponseRecorded!==true||evidence.realProviderAttempts!==1||evidence.notificationEventCount!==1||evidence.paymentUnchanged!==true||evidence.refreshAndReplayVerified!==true)throw Error('Real automatic Viber activation requires one verified real delivery with unchanged payment and no duplicate event');
+}
 function validateTarget(config,confirmation){
  const id=config?.projectId;
  if(config?.confirmedSeparateStaging!==true||!id||!/^[a-z][a-z0-9-]*-staging(?:-[a-z0-9]+)*$/.test(id)||confirmation!==id)throw Error('Confirm a separate project ending in -staging (or -staging-<suffix>); production/default projects are refused');
@@ -29,12 +33,15 @@ async function main(){
  const viberPolicy=require('../functions/viber-policy.json');
  const evidencePath=path.join(root,'staging/viber-remittance-verification.json');
  validateViberActivation(viberPolicy,fs.existsSync(evidencePath)?JSON.parse(fs.readFileSync(evidencePath,'utf8')):null);
+ const realEvidencePath=path.join(root,'staging/real-viber-verification.json');
+ validateRealViberActivation(viberPolicy,fs.existsSync(realEvidencePath)?JSON.parse(fs.readFileSync(realEvidencePath,'utf8')):null);
  const config=JSON.parse(fs.readFileSync(path.resolve(root,configPath),'utf8')),id=validateTarget(config,confirmation),cli=require('./firebase-cli.cjs').cliPath();
  const run=(exe,argv,options={})=>{const r=spawnSync(exe,argv,{cwd:root,stdio:'inherit',...options});if(r.error)throw r.error;if(r.status!==0)throw Error('Staging command failed; deployment stopped');};
  // Contact only the explicitly confirmed staging project; never enumerate or select other projects.
- fs.writeFileSync(path.join(root,'public/index.html'),require('./restore-original-ui.cjs').generate());
+ const hostedHtml=require('./restore-original-ui.cjs').generate({hosted:true});
  const out=path.join(root,'.runtime/deploy');fs.mkdirSync(out,{recursive:true});
  fs.cpSync(path.join(root,'public'),path.join(out,'public'),{recursive:true});
+ fs.writeFileSync(path.join(out,'public/index.html'),hostedHtml);
  fs.cpSync(path.join(root,'functions'),path.join(out,'functions'),{recursive:true,filter:src=>!src.split(path.sep).some(part=>part==='node_modules'||part.startsWith('.env')||part.startsWith('.secret'))});
  fs.writeFileSync(path.join(out,'functions/deployment-target.json'),JSON.stringify({environment:'staging',projectId:id}));
  const client=path.join(out,'public/config.js');fs.writeFileSync(client,'export const firebaseConfig='+JSON.stringify(config.firebaseConfig)+';\nexport const functionsRegion="asia-southeast1";\nexport const useEmulators=false;\n');
@@ -67,4 +74,4 @@ async function main(){
  console.log('Staging URL: https://'+id+'.web.app');
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={validateViberActivation,validateTarget,assertFunctionInventory,isInvokerOnlyFailure};
+module.exports={validateViberActivation,validateRealViberActivation,validateTarget,assertFunctionInventory,isInvokerOnlyFailure};

@@ -1,0 +1,14 @@
+{
+  "project": "rocketfix-360-staging",
+  "verifiedAt": "2026-11-10T19:11:34.757Z",
+  "spreadsheetId": "1kOtnKnD1eHgmCylidPwGW0veIyokbwVUD4hvNaQf-JU",
+  "sheetId": 0,
+  "tab": "Orders",
+  "headerRow": 1,
+  "headerVerified": true,
+  "canEdit": true,
+  "nextSafeRow": 908,
+  "readOnlyInspection": true,
+  "liveWritePerformed": false,
+  "liveFrameAcceptance": "PENDING_GENUINE_FRAME_ORDER"
+}

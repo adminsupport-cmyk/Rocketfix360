@@ -2,5 +2,9 @@
   "controlledVerificationEnabled": false,
   "controlledCustomer": "TEST VIBER INTEGRATION 20261110",
   "approvedChannelName": "REMIT - RF",
-  "automaticDeliveryActivatedAt": "2026-11-10T08:18:35.591Z"
+  "automaticDeliveryActivatedAt": "2026-11-10T08:18:35.591Z",
+  "fictionalDeliveryEnabled": false,
+  "controlledRealVerificationEnabled": false,
+  "realVerificationPosId": "64088235",
+  "realAutomaticDeliveryActivatedAt": "2026-11-10T19:15:19.430Z"
 }

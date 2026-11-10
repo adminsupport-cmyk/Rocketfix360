@@ -12,7 +12,7 @@ const {getFirestore}=require('node:module').createRequire(require('node:path').r
  await page.locator('[data-tab="new"]').click();await page.getByRole('button',{name:'＋ Start New',exact:true}).click();await page.locator('#fixtureMode').uncheck();
  await page.locator('#fullName').fill('Agreed Price Customer');await page.locator('#email').fill('customer@example.com');await page.locator('[data-name="amount"]').first().fill('375.50');await page.locator('#received').fill('375.50');const id=await page.locator('#posId').textContent();
  await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='PAYMENT SAVED ✓');
- const record=(await db.doc('orders/'+id).get()).data();assert.equal(record.stagingTest,false);assert.equal(record.received,375.5);assert.equal(record.paymentMode,'AGREED_EDITING_V1');assert.equal(record.items.length,1);assert.equal(record.excess,0);
- const event=(await db.doc('notificationOutbox/'+id+'_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(require('../functions/viber-staging').authorized(event),false);
+ const record=(await db.doc('orders/'+id).get()).data();assert.equal(record.stagingTest,false);assert.equal(record.received,375.5);assert.equal(record.paymentMode,'REAL_POS_V1');assert.equal(record.items.length,1);assert.equal(record.excess,0);
+ const event=(await db.doc('notificationOutbox/'+id+'_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(event.realViberActivation,require('../functions/viber-policy.json').realAutomaticDeliveryActivatedAt);
  assert.deepEqual(errors,[]);console.log('PASS: browser Sales editing-only exact payment saved without fictional label or external Viber eligibility.');
  }finally{await browser.close();await admin.app().delete();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T18:21:06.675Z",
+  "checkedAt": "2026-11-10T19:17:27.435Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -168,16 +168,17 @@
   "assets": [
     {
       "name": "index.html",
-      "sha256": "3aebca0d00822bc147ee5df45ba4e5908a5f997df81dd4834312d399a9a1b121"
+      "sha256": "7f2d2609301d1124b4f2b152d08f5e62b756cf286256d4baef3c5084a621dd04"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "2431b788020a1d4e5997df5b1e72ecab0be1e2205d16767d414151c1f88d216b"
+      "sha256": "4be2922b80d26bd814be62d4e73f6e279d73235a3480ffcd1894a47d2f6832e3"
     }
   ],
-  "realCustomerNotificationsEnabled": false,
-  "fictionalStagingViberEnabled": true,
-  "financialWrites": "AGREED_EDITING_ONLY_EXACT_PAYMENT; FRAMES_AND_UNAPPROVED_ADJUSTMENTS_BLOCKED",
-  "ownerDeployedAcceptance": "NOT_VERIFIED; no authorized browser session used",
-  "fullParity": false
+  "realCustomerNotificationsEnabled": true,
+  "fictionalStagingViberEnabled": false,
+  "financialWrites": "REAL_POS_V1; VERIFIED_FRAME_AND_SHIPPING_PRICING; SERVER_VALIDATED_ALLOCATIONS",
+  "ownerDeployedAcceptance": "VERIFIED; see staging/real-pos-release.json",
+  "fullParity": false,
+  "emailDeliveryEnabled": false
 }

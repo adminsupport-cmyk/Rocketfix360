@@ -5,8 +5,7 @@ function assertLiveConfig(c=cfg){
 }
 function livePlan(o,itemKey){
  assertLiveConfig();if(o?.stagingTest!==false||o.environment!=='staging'||o.voidedAt||o.status!=='SYNCED')throw Error('REMIT_REAL_CONFIRMED_EDITING_ORDER_REQUIRED');
- require('./staging-orders').realEditingContext(o);
- const checked=require('./core').validate(o);for(const key of ['received','due','discount','tip','excess','editPaid','framePaid','shippingFee','subtotal'])if(o[key]!==checked[key])throw Error('REMIT_SAVED_FINANCIAL_ALLOCATION_MISMATCH');
+ const checked=require('./real-orders').assertRealSavedOrder(o);
  const p=mirrorPlan(o).find(p=>p.destination==='master'&&p.key===itemKey);if(!p)throw Error('REMIT_SAVED_EDITING_ITEM_REQUIRED');const i=o.items.find(i=>i.itemKey===itemKey),clean=checked.items.find(i=>i.itemKey===itemKey);if(!clean||i._paid!==clean._paid||i._discount!==clean._discount)throw Error('REMIT_SAVED_FINANCIAL_ALLOCATION_MISMATCH');
  delete p.cells[27];delete p.formats[27];p.cells[7]=i.fileUrl||'';p.cells[9]=i.noteFileUrl||'';return p;
 }

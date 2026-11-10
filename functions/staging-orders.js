@@ -22,6 +22,8 @@ function realEditingContext(order){
  return {config:{},stagingTest:false,fixtureVersion:null,paymentMode:'AGREED_EDITING_V1'};
 }
 function paymentContext(order,cfg,env=process.env,allowedEmails=[]){
+ if(order?.paymentMode==='REAL_POS_V1')return require('./real-orders').realContext(order,cfg);
+ if(!isLocal(env)&&order?.stagingTest===true)throw Error('Fictional order submission is disabled on the hosted POS');
  if(order?.paymentMode==='AGREED_EDITING_V1')return realEditingContext(order);
  return fixtureContext(order,cfg,env,allowedEmails);
 }

@@ -28,7 +28,7 @@ async function deliver(db,ref,adapter=async()=>({id:'SIMULATED',simulated:true,p
  const {n,attemptId}=claim,attempt=db.doc('notificationAttempts/'+attemptId);
  let acceptance=null;
  try{
-  const content=message(n),result=await adapter(content,{eventId:ref.id,type:n.type,attempt:n.attempts,createdAt:n.createdAt,stagingTest:n.stagingTest,controlledVerification:n.controlledVerification,viberActivation:n.viberActivation,externalDeliveryEligible:n.externalDeliveryEligible,deliveryActivation:n.deliveryActivation});
+  const content=message(n),result=await adapter(content,{eventId:ref.id,type:n.type,attempt:n.attempts,createdAt:n.createdAt,posId:n.posId,realViberActivation:n.realViberActivation,controlledRealVerification:n.controlledRealVerification,stagingTest:n.stagingTest,controlledVerification:n.controlledVerification,viberActivation:n.viberActivation,externalDeliveryEligible:n.externalDeliveryEligible,deliveryActivation:n.deliveryActivation});
   const state={status:result.simulated?'SIMULATED':'SENT',provider:result.provider||'TEST_ADAPTER',providerId:String(result.id||''),updatedAt:now()};
   acceptance=state;
   const batch=db.batch();batch.update(ref,{...state,preview:content});batch.update(attempt,state);await batch.commit();

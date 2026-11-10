@@ -22,3 +22,15 @@ test('deployment rejects automatic activation without controlled delivery and du
  for(const patch of [{eventStatus:'REVIEW'},{notificationEventCount:2},{attempts:2},{refreshAndEditVerified:false},{project:'rocketfix-360'},{orderVersion:1}])assert.throws(()=>validateViberActivation(p,{...e,...patch}));
  assert.throws(()=>validateViberActivation(p,null));
 });
+test('real notifications require an exact activation epoch; fictional and historical events stay disabled',()=>{
+ const cutoff='2026-11-11T01:00:00.000Z',p={fictionalDeliveryEnabled:false,controlledRealVerificationEnabled:true,realVerificationPosId:'64088235',realAutomaticDeliveryActivatedAt:cutoff};
+ const n={type:'VIBER',stagingTest:false,posId:'12345678',createdAt:cutoff,realViberActivation:cutoff};
+ assert.equal(authorized(n,p),true);assert.equal(authorized({...n,type:'LATE_VIBER'},p),true);
+ for(const patch of [{stagingTest:true},{createdAt:'2026-11-10T01:00:00Z'},{realViberActivation:null},{realViberActivation:'old'},{type:'CUSTOMER'}])assert.equal(authorized({...n,...patch},p),false);
+ assert.equal(authorized({type:'VIBER',stagingTest:false,posId:'64088235',controlledRealVerification:true},p),true);
+ assert.equal(authorized({type:'VIBER',stagingTest:false,controlledRealVerification:true},{controlledRealVerificationEnabled:true}),false);
+ const {validateRealViberActivation}=require('../tools/deploy-staging.cjs'),policy={...p,controlledRealVerificationEnabled:false};
+ const evidence={project:'rocketfix-360-staging',database:'rocketfix360database',posId:'64088235',eventStatus:'SENT',provider:'VIBER',providerResponseRecorded:true,realProviderAttempts:1,notificationEventCount:1,paymentUnchanged:true,refreshAndReplayVerified:true};
+ assert.doesNotThrow(()=>validateRealViberActivation(policy,evidence));
+ for(const patch of [{eventStatus:'REVIEW'},{realProviderAttempts:2},{notificationEventCount:2},{paymentUnchanged:false},{refreshAndReplayVerified:false},{project:'rocketfix-360'}])assert.throws(()=>validateRealViberActivation(policy,{...evidence,...patch}));
+});

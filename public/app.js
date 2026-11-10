@@ -15,7 +15,7 @@ let profile=null,pricingVersion=0;
 const requests=new WeakMap(),pending=new Map();
 const invoke=async(name,data={})=>(await httpsCallable(functions,name,{timeout:70000})(data)).data;
 const historyCache=new Map();let historyCursor=null,historyInitialized=false;
-const cachedHistory=()=>[...historyCache.values()].filter(o=>!o.voidedAt).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(adapter.fromFirebase);
+const cachedHistory=()=>[...historyCache.values()].filter(o=>!o.voidedAt&&(useEmulators||o.stagingTest!==true)).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(adapter.fromFirebase);
 async function history(){
  const result=await invoke('listOrders',{limit:150});for(const o of result.orders)historyCache.set(o.posId,o);if(!historyInitialized){historyCursor=result.nextCursor;historyInitialized=true;}
  if(document.querySelector('.tab.active')?.id==='daily'){
@@ -37,7 +37,7 @@ async function dispatch(method,args){
   const record=values[0];if(values[1])return unsupported('Google Drive proof upload');
   if(!requests.has(record))requests.set(record,crypto.randomUUID());
   pending.set(record.posId,requests.get(record));
-  const result=await invoke('saveOrder',{order:{...adapter.toFirebase(record),...(window.firebasePOS.fixtureMode?{stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1'}:{stagingTest:false,paymentMode:'AGREED_EDITING_V1'})},expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
+  const result=await invoke('saveOrder',{order:{...adapter.toFirebase(record),...(window.firebasePOS.fixtureMode?{stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1'}:{stagingTest:false,paymentMode:'REAL_POS_V1'})},expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
   const order=result.record||(await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)})).order;pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
  }
  case 'delete':await invoke('voidOrder',{posId:values[0],expectedVersion:values[1],reason:'Confirmed by employee through original POS deletion workflow'});return {ok:true,deleted:true,posId:values[0]};
@@ -50,13 +50,12 @@ async function dispatch(method,args){
  case 'framePricingGet':{
   const cfg=await invoke('getPricing',{stagingTest:window.firebasePOS.fixtureMode});pricingVersion=cfg.version||0;
   // Synthetic rates are allowed only in the isolated demo emulator, never normal staging quotations.
-  return window.firebasePOS.fixtureMode?cfg:{rates:{},custom:{}};
+  return cfg;
  }
  case 'framePricingSave':{
   try{
    if(!['owner','admin'].includes(profile.role))throw Error('Only an Owner or Admin can change pricing');
-   if(!useEmulators)return unsupported('Unverified pricing changes');
-   const cfg=await invoke('savePricing',{config:{...values[0],fixtureOnly:true},expectedVersion:pricingVersion});pricingVersion=cfg.version;window.dispatchEvent(new Event('rf:pricing-saved'));return cfg;
+   const cfg=await invoke('savePricing',{config:{...values[0],fixtureOnly:useEmulators},expectedVersion:pricingVersion});pricingVersion=cfg.version;window.dispatchEvent(new Event('rf:pricing-saved'));return cfg;
   }catch(error){window.dispatchEvent(new Event('rf:pricing-failed'));throw error;}
  }
  case 'lateAddonLookup':{

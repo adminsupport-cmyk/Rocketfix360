@@ -3,7 +3,7 @@
 // remain source-owned; narrowly scoped changes below replace backend boundaries.
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
-function generate(){
+function generate(options={}){
  const version=require('node:crypto').createHash('sha256');
  for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','tools/templates/settings.html','public/workspace.js','public/modern.js','public/proofs.js'])version.update(fs.readFileSync(path.join(root,file)));
  const assetVersion=version.digest('hex').slice(0,16);
@@ -46,15 +46,12 @@ function setPOSAccess(profile){
  html=html.replace("vOnly.hidden=!(r.latePaymentRecorded","vOnly.hidden=true; /* External sending disabled. */ void (r.latePaymentRecorded");
  html=html.replace("c.fillText('PAYMENT CONFIRMED',540,278)","c.fillText(r.stagingTest?'FICTIONAL TEST ORDER':'PAYMENT CONFIRMED',540,278)");
  html=html.replace('editingId=id;editingVersion=r.updatedAt;',"if($('fixtureMode'))$('fixtureMode').checked=r.stagingTest===true;editingId=id;editingVersion=r.updatedAt;");
- html=html.replace('function rfLateSave(){',"function rfLateSave(){if(!window.firebasePOS?.fixtureMode){document.getElementById('rfLateMsg').textContent='Payment changes are unavailable while original business rules are being verified.';return;}");
- html=html.replace('function saveTransaction(){',`function saveTransaction(){
- if(!window.firebasePOS?.fixtureMode){const entered=totals();if(entered.items.some(i=>i.kind!=='editing'||i.frameOrderId))return rfNotify('Real payments are available for standalone editing orders only. Frame payments await verified pricing.',true);if(entered.discount||entered.tip||entered.shippingFee||Math.abs(entered.received-entered.due)>0.001)return rfNotify('Enter the exact agreed editing payment. Discounts, tips, Excess and shipping await approved rules.',true);}`);
- html=html.replace("amount:kind==='frame'?799:0", "amount:kind==='frame'&&window.firebasePOS?.fixtureMode?799:0");
+ html=html.replace("amount:kind==='frame'?799:0", "amount:kind==='frame'?799:0");
  html=html.replace('function setFramePrice(uid,size){',`function setFramePrice(uid,size){
- if(!window.firebasePOS?.fixtureMode){const field=document.querySelector('[data-id="'+uid+'"][data-name="amount"]');if(field)field.value=0;compute();return;}`);
- html=html.replace("$('due').textContent=money(t.due);","$('due').textContent=!window.firebasePOS?.fixtureMode&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.due);");
- html=html.replace("$('frameSum').textContent=money(t.frame);","$('frameSum').textContent=!window.firebasePOS?.fixtureMode&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.frame);");
- html=html.replace("$('rfShippingQuote').innerHTML=b.length?", "$('rfShippingQuote').innerHTML=!window.firebasePOS?.fixtureMode&&b.length?'Pricing and shipping approval is pending. Customer quotations and payments are unavailable.':b.length?");
+ if(!window.firebasePOS?.fixtureMode&&!rfFramePricing?.sourceVerified){const field=document.querySelector('[data-id="'+uid+'"][data-name="amount"]');if(field)field.value=0;compute();return;}`);
+ html=html.replace("$('due').textContent=money(t.due);","$('due').textContent=!window.firebasePOS?.fixtureMode&&!rfFramePricing?.sourceVerified&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.due);");
+ html=html.replace("$('frameSum').textContent=money(t.frame);","$('frameSum').textContent=!window.firebasePOS?.fixtureMode&&!rfFramePricing?.sourceVerified&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.frame);");
+ html=html.replace("$('rfShippingQuote').innerHTML=b.length?", "$('rfShippingQuote').innerHTML=!window.firebasePOS?.fixtureMode&&!rfFramePricing?.sourceVerified&&b.length?'Pricing and shipping approval is pending. Customer quotations and payments are unavailable.':b.length?");
  html=html.replace("rfSetLookupInfo('REMIT customer refresh failed: '+msg.slice(0,170));","rfSetLookupInfo('Customer directory import pending.');");
  html=html.replace("const RF_CUSTOMER_DIRECTORY_CACHE='rocketfix-pos-remit-customers-v25';", "const RF_CUSTOMER_DIRECTORY_CACHE='rocketfix-firebase-customers-parity-v1';");
  // Avoid stale customer PII crossing employee sign-ins; no legacy directory cache.
@@ -98,6 +95,7 @@ function setPOSAccess(profile){
  html=html.replace('function resetForm(){',"function resetForm(){window.modernPOS?.resetSubmission();");
  html=html.replace('Transaction History</h1>','Remittances</h1>');
 
+ if(options.hosted===true)html=html.replace(/<div class="panel"><label><input[^>]*id="fixtureMode"[\s\S]*?<\/div>/,'');
  return html.replace('src="/app.bundle.js"','src="/app.bundle.js?v='+assetVersion+'"').replace(/[ \t]+$/gm,'');
 }
 if(require.main===module)fs.writeFileSync(path.join(root,'public/index.html'),generate());

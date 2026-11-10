@@ -19,14 +19,14 @@ function productQuote(item,cfg={}){
  if(!kind)throw Error('Unsupported frame design; authoritative pricing required');
  const {w,h}=dimensions(item),c=cfg.custom||{};
  if(w<Number(c[kind+'MinWidth']??4)||w>Number(c[kind+'MaxWidth']??60)||h<Number(c[kind+'MinHeight']??4)||h>Number(c[kind+'MaxHeight']??60))throw Error('Frame dimensions exceed configured production limits');
- if(kind==='framed'&&!item.customSize&&Object.hasOwn(standards,item.size))return {price:standards[item.size],kind};
+ if(kind==='framed'&&!item.customSize&&Object.hasOwn(standards,item.size))return {price:cfg.sourceVerified===true?Number(cfg.standards?.[item.size]):standards[item.size],kind};
  const rate=Number(c[kind+'Rate']),base=Number(c[kind+'Base']||0),minimum=Number(c[kind+'Minimum']||0);
  if(!(rate>0&&Number.isFinite(rate)))throw Error('Configure '+design+' pricing before quoting');
  return {price:Math.max(minimum,Math.ceil(w*h*rate+base)),kind};
 }
 function quoteOrder(raw,cfg={},enforcePrice=true){
  const items=(raw.items||[]).map(x=>({...x}));let fee=0;
- if(items.some(x=>x.kind==='frame')&&cfg.fixtureOnly!==true)throw Error('Frame pricing is unverified. Await legacy source audit, or explicitly enable synthetic staging fixtures.');
+ if(items.some(x=>x.kind==='frame')&&cfg.fixtureOnly!==true&&cfg.sourceVerified!==true)throw Error('Frame pricing is unverified. Await legacy source audit, or explicitly enable synthetic staging fixtures.');
  for(const item of items.filter(x=>x.kind==='frame')){
   const quote=productQuote(item,cfg);
   if(enforcePrice&&(!Number.isFinite(Number(item.amount))||Math.abs(Number(item.amount)-quote.price)>0.01))throw Error('Product price changed; refresh calculator: '+item.existingId);
@@ -39,7 +39,7 @@ function quoteOrder(raw,cfg={},enforcePrice=true){
   item.shippingTier=t;item.shippingDays=rate?.days||'';fee=round(fee+item.shippingFee);
   if(item.customSize)item.size=item.customWidth+'"x'+item.customHeight+'" - Custom '+quote.kind;
  }
- return {...raw,items,shippingFee:fee,pricingStatus:items.some(x=>x.kind==='frame')?'UNVERIFIED_FIXTURE':'NOT_APPLICABLE'};
+ return {...raw,items,shippingFee:fee,pricingStatus:items.some(x=>x.kind==='frame')?(cfg.sourceVerified===true?'SOURCE_VERIFIED':'UNVERIFIED_FIXTURE'):'NOT_APPLICABLE'};
 }
 function pricingConfig(input){
  const custom={},rates={};

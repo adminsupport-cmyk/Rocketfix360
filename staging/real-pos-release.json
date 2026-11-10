@@ -1,0 +1,52 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "website": "https://rocketfix-360-staging.web.app",
+  "branch": "feature/staging-test-remittance-manual-mirror",
+  "verifiedAt": "2026-11-10T19:19:04.665Z",
+  "pricingSettingsSaved": true,
+  "pricingVersion": 1,
+  "standardPricesOwnerConfirmed": true,
+  "fictionalHostedSubmissionsDisabled": true,
+  "historicalFictionalRecordsPreserved": true,
+  "realEditingFrameCombinedEnabled": true,
+  "editingMirror": {
+    "tab": "REMIT",
+    "sheetId": 1830742337,
+    "manualOnly": true
+  },
+  "frameMirror": {
+    "tab": "Orders",
+    "sheetId": 0,
+    "manualOnly": true,
+    "liveWriteAcceptance": "PENDING_GENUINE_FRAME_ORDER"
+  },
+  "realViberAutomaticEnabled": true,
+  "realViberActivatedAt": "2026-11-10T19:15:19.430Z",
+  "historicalBackfills": false,
+  "realViberVerificationPosId": "64088235",
+  "actualViberMessagesSent": 1,
+  "ownerBrowserAcceptance": {
+    "dashboard": true,
+    "reports": true,
+    "editingHistory": true,
+    "savedPricing": true,
+    "frameQuote": true,
+    "notificationStatus": true,
+    "noNewPaymentSubmitted": true
+  },
+  "tests": {
+    "unit": 87,
+    "emulatorTestRecords": 31,
+    "browserScripts": 3,
+    "deployedCallablePreflightAuthentication": 32
+  },
+  "blockers": [
+    "First genuine frame order live mirror acceptance",
+    "Historical Sheets sales/customer migration",
+    "Reconciled reversals for mirrored or produced orders",
+    "Full original parity, migration reconciliation and production-readiness checks"
+  ],
+  "productionFirebaseModified": false,
+  "mainMerged": false
+}

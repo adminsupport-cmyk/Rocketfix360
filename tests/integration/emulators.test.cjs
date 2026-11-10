@@ -35,7 +35,7 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  await assert.rejects(call('saveOrder',payload,'editor'),{code:'PERMISSION_DENIED'});
  const saved=await call('saveOrder',payload,'sales');assert.equal(saved.record.stagingTest,false);assert.equal(saved.record.paymentMode,'AGREED_EDITING_V1');assert.equal(saved.record.received,300.3);assert.equal(saved.record.excess,0);assert.equal(saved.record.editPaid,300.3);
  const replay=await call('saveOrder',payload,'sales');assert.equal(replay.version,1);
- const event=(await db.doc('notificationOutbox/88776655_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(require('../../functions/viber-staging').authorized(event),false);
+ const event=(await db.doc('notificationOutbox/88776655_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(event.realViberActivation,require('../../functions/viber-policy.json').realAutomaticDeliveryActivatedAt);
  await assert.rejects(call('saveOrder',{order:{...order,received:301},expectedVersion:1,requestId:'real-editing-excess-rejected'},'sales'),/Excess/);
  await assert.rejects(call('saveOrder',{order:{...order,items:[{...order.items[0],kind:'frame'}]},expectedVersion:1,requestId:'real-editing-frame-rejected'},'sales'),/Only standalone editing/);
  const edited=await call('saveOrder',{order:{...order,remarks:'Corrected'},expectedVersion:1,requestId:'real-editing-correction-88776655'},'sales');assert.equal(edited.version,2);
@@ -182,6 +182,42 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  const live=require('../../functions/live-remit'),api=live.createLiveRemit(db,{transport:{inspect:async()=>({row:10001,action:written?'UPDATE':'CREATE',matches:written,spreadsheetId:live.cfg.spreadsheetId,sheetId:live.cfg.sheetId}),write:async(p,row)=>{assert.equal(p.cells[16],order.posId);writes++;written=true;return {row};}}}),actor={uid:'test-owner',role:'owner'};
  const preview=await api.preview({posId:order.posId,itemKey:key},actor);assert.equal(preview.testOnly,false);const args={posId:order.posId,itemKey:key,expectedVersion:1,confirmationToken:preview.confirmationToken};const result=await Promise.allSettled([api.sync(args,actor),api.sync(args,actor)]);assert.ok(result.some(r=>r.status==='fulfilled'&&r.value.status==='MIRRORED'));assert.equal((await api.sync(args,actor)).replayed,true);assert.equal(writes,1);
  const status=await call('remitMirrorStatuses',{posIds:[order.posId]});assert.equal(status.records[0].spreadsheetId,live.cfg.spreadsheetId);assert.deepEqual((await db.doc('orders/'+order.posId).get()).data(),before);assert.equal((await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size,count);
+ });
+ await t.test('verified real combined remittance preserves workflow, earnings and both manual mirror destinations',async()=>{
+ const source=require('../../functions/real-pricing-source.json');
+ const priorPricing=(await db.doc('stagingConfig/pricing').get()).data();
+ const cfg=await call('savePricing',{config:source,expectedVersion:priorPricing.version});assert.equal(cfg.sourceVerified,true);
+ const {base:raw}=require('../helpers/real-order.cjs');
+ const order={...raw,posId:'77881122',email:'real-mode@example.invalid',items:[{kind:'editing',existingId:'RF77881A',amount:300,assignedTo:'test-editor'},{...raw.items[0],existingId:'ZX7Y6',addOnType:'Personalized Letter',addOnFont:'Regular',addOnColor:'Pink',addOnMessage:'N/A',addOnCommissionRecipient:'Renz Malenab'}]};
+ const payload={order,requestId:'real-combined-77881122'};
+ await assert.rejects(call('saveOrder',payload,'production'),{code:'PERMISSION_DENIED'});
+ const result=await call('saveOrder',payload,'sales');assert.equal(result.version,1);assert.equal(result.record.pricingStatus,'SOURCE_VERIFIED');assert.equal(result.record.due,1514);assert.equal(result.record.excess,486);
+ assert.equal((await call('saveOrder',payload,'sales')).version,1);
+ assert.equal((await db.doc('earnings/LETTER%3AZX7Y6').get()).data().amount,50);
+ assert.equal((await db.doc('earnings/TIP%3A77881122').get()).data().amount,5);
+ let current=(await call('getOrder',{posId:order.posId})).order;
+ await call('updateItemStatus',{posId:order.posId,itemKey:current.items[0].itemKey,status:'On going',expectedVersion:1},'editor');
+ await assert.rejects(call('saveOrder',{...payload,requestId:'real-combined-stale',expectedVersion:1}),/changed elsewhere/);
+ current=(await call('getOrder',{posId:order.posId})).order;
+ const edit=await call('saveOrder',{order:{...order,remarks:'Verified correction'},expectedVersion:current.version,requestId:'real-combined-correction'},'sales');
+ assert.equal(edit.record.items[0].status,'On going');assert.equal(edit.record.excess,486);
+ assert.equal((await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size,2);
+ const event=(await db.doc('notificationOutbox/'+order.posId+'_VIBER').get()).data();assert.equal(event.stagingTest,false);assert.equal(event.realViberActivation,require('../../functions/viber-policy.json').realAutomaticDeliveryActivatedAt);
+ const before=(await db.doc('orders/'+order.posId).get()).data(),actor={uid:'test-owner',role:'owner'};
+ for(const kind of ['editing','frame']){
+ const key=before.items.find(i=>i.kind===kind).itemKey;
+ await assert.rejects(call('previewRemitMirror',{posId:order.posId,itemKey:key}),/REMIT_EMULATOR_EXTERNAL_ACCESS_DISABLED/);
+ const m=require(kind==='frame'?'../../functions/live-frame-mirror':'../../functions/live-remit');let writes=0;
+ const api=(m.createLiveFrameMirror||m.createLiveRemit)(db,{transport:{inspect:async()=>({row:kind==='frame'?908:10002,action:writes?'UPDATE':'CREATE',matches:!!writes,spreadsheetId:m.cfg.spreadsheetId,sheetId:m.cfg.sheetId}),write:async(p,row)=>{writes++;assert.equal(p.cells[kind==='frame'?39:16],order.posId);return {row};}}});
+ const preview=await api.preview({posId:order.posId,itemKey:key},actor),args={posId:order.posId,itemKey:key,expectedVersion:before.version,confirmationToken:preview.confirmationToken};
+ await api.sync(args,actor);assert.equal((await api.sync(args,actor)).replayed,true);assert.equal(writes,1);
+ }
+ assert.deepEqual((await db.doc('orders/'+order.posId).get()).data(),before);
+ await assert.rejects(call('voidOrder',{posId:order.posId,expectedVersion:before.version,reason:'Mirrored reversal unapproved'}),/mirrored|production activity/i);
+ assert.equal((await db.collection('notificationOutbox').where('posId','==',order.posId).get()).size,2);
+ assert.ok((await db.collection('orders/'+order.posId+'/revisions').get()).size>=3);
+ const statuses=await call('remitMirrorStatuses',{posIds:[order.posId]});assert.equal(statuses.records.length,2);
+ await db.doc('stagingConfig/pricing').set(priorPricing);
  });
  await t.test('hosting serves compiled staging application',async()=>{
  const r=await fetch('http://127.0.0.1:5050');assert.ok(r.ok);assert.match(await r.text(),/app.bundle.js/);const js=await fetch('http://127.0.0.1:5050/app.bundle.js');assert.ok(js.ok);assert.match(await js.text(),/connectAuthEmulator/);

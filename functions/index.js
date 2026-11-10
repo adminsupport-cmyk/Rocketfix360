@@ -12,7 +12,7 @@ const providerSecrets=Object.values(credentialBindings);
 const readCredentials=()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]));
 const emailAdapter=createProviderAdapter({readCredentials});
 const viberAdapter=require('./viber-staging').adapter(readCredentials);
-const providerAdapter=(content,context)=>context.type==='VIBER'?viberAdapter(content,context):emailAdapter(content,context);
+const providerAdapter=(content,context)=>['VIBER','LATE_VIBER'].includes(context.type)?viberAdapter(content,context):emailAdapter(content,context);
 const {onDocumentCreated}=require('firebase-functions/v2/firestore');
 const admin=require('firebase-admin');
 const {FieldValue,FieldPath,getFirestore}=require('firebase-admin/firestore');
@@ -48,7 +48,7 @@ exports.listOrders=call(readers,async ({limit:lim=80,cursor},actor)=>{
  if(cursor&&!writer.includes(actor.role))throw Error('History pagination requires financial access');
  if(cursor){if(typeof cursor.createdAt!=='string'||!/^\d{8}$/.test(String(cursor.posId)))throw Error('Invalid history cursor');query=query.startAfter(cursor.createdAt,cursor.posId);}
  const s=await query.limit(size).get();
- let all=s.docs.map(d=>d.data());if(!writer.includes(actor.role))all=all.filter(o=>!o.voidedAt);
+ let all=s.docs.map(d=>d.data()).filter(o=>isLocal()||o.stagingTest!==true);if(!writer.includes(actor.role))all=all.filter(o=>!o.voidedAt);
  if(actor.role==='editor')all=all.filter(o=>o.items.some(i=>i.kind==='editing'&&i.assignedTo===actor.uid)).map(o=>({...o,items:o.items.filter(i=>i.kind==='editing'&&i.assignedTo===actor.uid)}));
  if(actor.role==='production')all=all.filter(o=>o.items.some(i=>i.kind==='frame')).map(o=>({...o,items:o.items.filter(i=>i.kind==='frame')}));
  const last=s.docs.at(-1);return {orders:all.map(o=>publicOrder(o,actor.role,actor.uid)),nextCursor:writer.includes(actor.role)&&s.size===size&&last?{createdAt:last.data().createdAt,posId:last.id}:null};
@@ -96,6 +96,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const cfg=await t.get(db.doc('stagingConfig/pricing'));
   const test=paymentContext(order,cfg.data()||{},process.env,notificationPolicy.allowedTestEmails);
   const clean=validate(quoteOrder(order,test.config,order.stagingTest!==true));
+  if(test.stagingTest===false&&clean.items.some(i=>i.kind==='frame'))clean.pricingStatus='SOURCE_VERIFIED';
   const priorSnap=await t.get(doc),prior=priorSnap.exists?priorSnap.data():null;
   const proof=await require('./drive-proofs').proofForCommit(t,db,order,prior,actor);
   if(prior && !expectedVersion)throw Error('POS ID exists. Open it in history to edit; never resubmit a payment.');
@@ -119,7 +120,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const keys=newItems.map(it=>db.doc('orderKeys/'+encodeURIComponent(it.kind+'|'+it.existingId)));
   const keySnaps=await Promise.all(keys.map(k=>t.get(k)));
   keySnaps.forEach((s,i)=>{if(s.exists && s.data().posId!==id)throw Error('Order ID already used: '+newItems[i].existingId);});
-  const target={...clean,...proof.fields,stagingTest:test.stagingTest,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:test.stagingTest?'FICTIONAL TEST ORDER':null,paymentMode:test.paymentMode||'FICTIONAL_TEST',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
+  const target={...clean,...proof.fields,stagingTest:test.stagingTest,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:test.stagingTest?'FICTIONAL TEST ORDER':null,paymentMode:test.paymentMode||'FICTIONAL_TEST',pricingVersion:test.pricingVersion||0,environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
   t.set(doc,target);
   if(proof.ref)t.update(proof.ref,{state:'ATTACHED',attachedAt:currentTime,attachedVersion:target.version,updatedAt:currentTime});
   t.create(db.doc('orders/'+id+'/revisions/'+target.version),{...target});
@@ -138,7 +139,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
    if(target.email&&target.email.toUpperCase()!=='N/A')t.create(db.doc('notificationOutbox/'+id+'_CUSTOMER'),{...eligibility(notificationPolicy,currentTime),type:'CUSTOMER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
    const controlledVerification=viberPolicy.controlledVerificationEnabled===true&&!verification.exists&&[target.first,target.last].filter(Boolean).join(' ')===viberPolicy.controlledCustomer;
    if(controlledVerification)t.create(verificationRef,{posId:id,eventId:id+'_VIBER',createdAt:currentTime});
-   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{...eligibility(notificationPolicy,currentTime),stagingTest:target.stagingTest,controlledVerification,viberActivation:viberPolicy.automaticDeliveryActivatedAt,type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
+   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{...eligibility(notificationPolicy,currentTime),stagingTest:target.stagingTest,controlledVerification,viberActivation:viberPolicy.automaticDeliveryActivatedAt,realViberActivation:viberPolicy.realAutomaticDeliveryActivatedAt||null,type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
   }
   const outcome={posId:id,version:target.version,wasEdit:!!prior,record:target};
   t.create(replayRef,{fingerprint,outcome,createdAt:currentTime});return outcome;
@@ -149,7 +150,7 @@ exports.updateItemStatus=call(['owner','admin','encoder','editor','production'],
  const ref=db.doc('orders/'+String(posId));
  const res=await db.runTransaction(async t=>{
   const snap=await t.get(ref);if(!snap.exists)throw Error('Order not found');
-  const order=snap.data();if(order.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');if(order.voidedAt)throw Error('Order voided');
+  const order=snap.data();if(!isLocal()&&order.stagingTest===true)throw Error('Archived fictional records cannot be changed');if(order.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');if(order.voidedAt)throw Error('Order voided');
   const items=order.items.map(x=>({...x})),i=items.findIndex(x=>x.itemKey===itemKey);if(i<0)throw Error('Item not found');
   const it=items[i],allowed=it.kind==='editing'?editStatuses:frameStatuses;
   if(!allowed.includes(status))throw Error('Invalid status');
@@ -165,21 +166,25 @@ exports.updateItemStatus=call(['owner','admin','encoder','editor','production'],
   if(mockupUrl!==undefined){if(it.kind!=='frame')throw Error('Frame mockup only');it.mockupUrl=link(mockupUrl);}
   if(trackingNumber!==undefined){if(it.kind!=='frame')throw Error('Frame tracking only');it.trackingNumber=String(trackingNumber).trim().slice(0,120);}
   const old=it.status;it.status=status;
-  t.update(ref,{items,updatedAt:now(),version:FieldValue.increment(1)});
+  const updated={...order,items,updatedAt:now(),updatedBy:actor.uid,version:order.version+1};
+  t.set(ref,updated);t.create(ref.collection('revisions').doc(String(updated.version)),updated);
+  t.create(db.doc('integrationOutbox/'+posId+'_SHEETS_'+updated.version),{type:'SHEETS',posId,version:updated.version,snapshot:updated,status:'NOT_REQUESTED',manualRequested:false,attempts:0,createdAt:now()});
   t.create(db.collection('audit').doc(),{action:'ITEM_STATUS',posId,actor:actor.uid,at:now(),itemKey,old,status});
   return {old,kind:it.kind,order};
  });
  return {ok:true,oldStatus:res.old,newStatus:status};
 });
 exports.voidOrder=call(['owner','admin'],async ({posId,expectedVersion,reason},actor)=>{
- assertFinancialTesting();
  if(String(reason||'').trim().length<5)throw Error('Reason is required');
  await db.runTransaction(async t=>{
   const ref=db.doc('orders/'+String(posId)),snap=await t.get(ref);if(!snap.exists)throw Error('Order not found');
   const o=snap.data();if(o.voidedAt)throw Error('Already voided');
+  if(!isLocal()&&o.stagingTest===true)throw Error('Archived fictional records cannot be changed');
+  const mirrors=await t.get(db.collection('remitSyncLedger').where('posId','==',String(posId)));if(mirrors.docs.some(s=>['WRITING','REVIEW','SYNCED'].includes(s.data().state)))throw Error('Mirrored orders require a reconciled reversal before voiding');
   if(o.version!==expectedVersion)throw Error('Refresh order before voiding');
   if(o.items.some(i=>i.kind==='frame'&&(i.status!=='HOLD'||i.trackingNumber||i.mockupUrl||i.lateLetter)))throw Error('Frame has production activity. Reconcile manually before voiding');
-  t.update(ref,{voidedAt:now(),voidReason:String(reason),voidedBy:actor.uid,status:'VOIDED',updatedAt:now(),version:FieldValue.increment(1)});
+  const updated={...o,voidedAt:now(),voidReason:String(reason),voidedBy:actor.uid,status:'VOIDED',updatedAt:now(),updatedBy:actor.uid,version:o.version+1};
+  t.set(ref,updated);t.create(ref.collection('revisions').doc(String(updated.version)),updated);
   for(const e of earnings(o))t.update(db.doc('earnings/'+encodeURIComponent(e.key)),{status:'VOIDED',updatedAt:now()});
   t.create(db.collection('audit').doc(),{posId,action:'VOID',actor:actor.uid,reason:String(reason),at:now()});
  });return {ok:true};
@@ -187,8 +192,8 @@ exports.voidOrder=call(['owner','admin'],async ({posId,expectedVersion,reason},a
 exports.dashboard=call(writer,async()=>{
  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'});
  const [orders,late]=await Promise.all([db.collection('orders').get(),db.collection('lateLetters').where('paymentDate','==',today).get()]);
- const all=orders.docs.map(s=>s.data());
- return {...dashboardTotals(all,late.docs.map(s=>s.data()),today),recent:all.filter(o=>!o.voidedAt).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,8)};
+ const all=orders.docs.map(s=>s.data()).filter(o=>isLocal()||o.stagingTest!==true);
+ return {...dashboardTotals(all,late.docs.map(s=>s.data()).filter(o=>isLocal()||o.stagingTest!==true),today),recent:all.filter(o=>!o.voidedAt).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,8)};
 });
 exports.notificationStatus=call(['owner','admin','sales'],async ({posId})=>{
  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID');
@@ -201,25 +206,26 @@ const {deliver}=require('./notifications');
 exports.deliverOutbox=onDocumentCreated({database:'rocketfix360database',document:'notificationOutbox/{eventId}',region:REGION,retry:true,timeoutSeconds:60,secrets:providerSecrets},async event=>{
  staging();if(event.data)await deliver(db,event.data.ref,providerAdapter);
 });
-exports.retryNotification=call(['owner','admin'],async ({eventId})=>{
+exports.retryNotification=call(['owner','admin'],async ({eventId},actor)=>{
  if(!/^[A-Za-z0-9_-]+$/.test(String(eventId)))throw Error('Invalid notification ID');
  const ref=db.doc('notificationOutbox/'+eventId);
  await db.runTransaction(async t=>{const snap=await t.get(ref),n=snap.data();
+  if(n&&n.type==='VIBER'&&n.stagingTest===false&&n.status==='SIMULATED'&&n.provider==='LOCAL'&&viberPolicy.controlledRealVerificationEnabled===true&&n.posId===viberPolicy.realVerificationPosId){if(actor.role!=='owner')throw Error('Owner verification required');const o=(await t.get(db.doc('orders/'+n.posId))).data();require('./real-orders').assertRealSavedOrder(o);if(o.version!==n.snapshot.version)throw Error('Payment changed; reconcile the receipt before sending');t.update(ref,{status:'QUEUED',controlledRealVerification:true,updatedAt:now()});t.create(db.collection('audit').doc(),{action:'REAL_VIBER_VERIFICATION_REQUESTED',posId:n.posId,eventId,actor:actor.uid,at:now()});return;}
   if(!n||n.status!=='NOT_DELIVERED')throw Error('Only confirmed non-delivery can be retried; REVIEW requires reconciliation');
   if(n.attempts>=3||!Number.isFinite(Date.parse(n.nextAttemptAt))||Date.parse(n.nextAttemptAt)>Date.now())throw Error('Retry limit or backoff active');
   t.update(ref,{status:'QUEUED',updatedAt:now()});
  });
  await deliver(db,ref,providerAdapter);return {ok:true};
 },{secrets:providerSecrets});
-exports.getPricing=call(writer,async ({stagingTest})=>stagingTest===true?{...fixtures,version:0}:{...(await db.doc('stagingConfig/pricing').get()).data()||{rates:{},custom:{}}});
+exports.getPricing=call(writer,async ({stagingTest})=>{if(!isLocal()){if(stagingTest===true)throw Error('Fictional pricing is disabled');return require('./real-orders').activePricing((await db.doc('stagingConfig/pricing').get()).data());}return stagingTest===true?{...fixtures,version:0}:{...(await db.doc('stagingConfig/pricing').get()).data()||{rates:{},custom:{}}};});
 exports.savePricing=call(['owner','admin'],async ({config,expectedVersion},actor)=>{
- assertFinancialTesting();
- const clean=pricingConfig(config||{}),ref=db.doc('stagingConfig/pricing');
+ const ref=db.doc('stagingConfig/pricing');
  return db.runTransaction(async t=>{const prior=(await t.get(ref)).data();if((prior?.version||0)!==(expectedVersion||0))throw Error('Pricing changed; reload settings');
- const target={...clean,version:(prior?.version||0)+1,updatedAt:now()};t.set(ref,target);
+ const clean=isLocal()&&config?.sourceVerified!==true?pricingConfig(config||{}):require('./real-orders').realPricing({...config,standards:config?.standards||prior?.standards||require('./real-pricing-source.json').standards});
+ const target={...clean,version:(prior?.version||0)+1,updatedAt:now(),updatedBy:actor.uid};t.set(ref,target);
  t.create(db.collection('audit').doc(),{action:'PRICING',actor:actor.uid,at:now(),before:prior||null,after:target});return target;});
 });
-exports.quote=call(writer,async ({order})=>{const test=fixtureContext(order,(await db.doc('stagingConfig/pricing').get()).data()||{},process.env,notificationPolicy.allowedTestEmails);return {order:quoteOrder(order,test.config,false),stagingTest:true,fixtureVersion:test.fixtureVersion};});
+exports.quote=call(writer,async ({order})=>{if(!isLocal()||order?.paymentMode==='REAL_POS_V1'){if(order?.stagingTest!==false)throw Error('Real order mode required');const cfg=require('./real-orders').activePricing((await db.doc('stagingConfig/pricing').get()).data());return {order:quoteOrder(order,cfg,false),stagingTest:false,pricingVersion:cfg.version};}const test=fixtureContext(order,(await db.doc('stagingConfig/pricing').get()).data()||{},process.env,notificationPolicy.allowedTestEmails);return {order:quoteOrder(order,test.config,false),stagingTest:true,fixtureVersion:test.fixtureVersion};});
 exports.listStaff=call(['owner','admin','sales','encoder'],async()=>({staff:(await db.collection('staff').get()).docs.map(d=>({uid:d.id,name:d.data().name,role:d.data().role,active:d.data().active===true}))}));
 exports.setStaff=call(['owner'],async ({uid,name,role,active},actor)=>{
  if(!/^[A-Za-z0-9_-]{1,128}$/.test(String(uid))||!permitted.has(role)||typeof active!=='boolean'||!String(name||'').trim())throw Error('Valid staff UID, name, role and active state required');
@@ -231,20 +237,19 @@ exports.earningsReport=call(readers,async ({from,to},actor)=>{
  date(from);date(to);if(from>to)throw Error('Invalid date range');
  if(!['owner','admin','sales'].includes(actor.role))throw Error('Earnings require financial access');
  const s=await db.collection('earnings').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
- const rows=s.docs.map(d=>d.data()).filter(e=>e.status==='ACTIVE');return {rows,total:Math.round(rows.reduce((a,e)=>a+e.amount,0)*100)/100};
+ let rows=s.docs.map(d=>d.data()).filter(e=>e.status==='ACTIVE');if(!isLocal()){const ids=[...new Set(rows.map(e=>e.posId))],orders=await Promise.all(ids.map(id=>db.doc('orders/'+id).get())),real=new Set(orders.filter(s=>s.exists&&s.data().stagingTest!==true).map(s=>s.id));rows=rows.filter(e=>real.has(e.posId));}return {rows,total:Math.round(rows.reduce((a,e)=>a+e.amount,0)*100)/100};
 });
 exports.salesReport=call(writer,async ({from,to,lateOnly=false})=>{
  date(from);date(to);if(from>to)throw Error('Invalid date range');
- if(lateOnly===true){const late=await db.collection('lateLetters').where('paymentDate','>=',from).where('paymentDate','<=',to).get();return {lateLetters:late.docs.map(d=>d.data())};}
+ if(lateOnly===true){const late=await db.collection('lateLetters').where('paymentDate','>=',from).where('paymentDate','<=',to).get();return {lateLetters:late.docs.map(d=>d.data()).filter(o=>isLocal()||o.stagingTest!==true)};}
  const snaps=await db.collection('orders').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
- const orders=snaps.docs.map(s=>s.data()).filter(o=>!o.voidedAt&&o.status==='SYNCED');
+ const orders=snaps.docs.map(s=>s.data()).filter(o=>!o.voidedAt&&o.status==='SYNCED'&&(isLocal()||o.stagingTest!==true));
  const late=await db.collection('lateLetters').where('paymentDate','>=',from).where('paymentDate','<=',to).get();
- const lateLetters=late.docs.map(d=>d.data());
+ const lateLetters=late.docs.map(d=>d.data()).filter(o=>isLocal()||o.stagingTest!==true);
  const sum=key=>Math.round(orders.reduce((a,o)=>a+o[key],0)*100)/100;
  return {orders,lateLetters,totals:{orders:orders.length,editing:sum('editPaid'),frames:sum('framePaid'),tips:sum('tip'),excess:sum('excess'),lateLetters:lateLetters.length*200,sales:Math.round((sum('editPaid')+sum('framePaid')+lateLetters.length*200)*100)/100},note:'Sales excludes tips and Excess; framing includes shipping and at-order letters.'};
 });
 exports.saveLateLetter=call(writer,async (payload,actor)=>{
- assertFinancialTesting();
  const id=String(payload.id||'').toUpperCase();if(!/^[A-Z]{2}\d[A-Z]\d$/.test(id))throw Error('Invalid frame ID');
  const value=letter(payload),ref=db.doc('lateLetters/'+id);
  return db.runTransaction(async t=>{
@@ -252,14 +257,17 @@ exports.saveLateLetter=call(writer,async (payload,actor)=>{
   if(prior)return {ok:true,alreadyRecorded:true,id,amount:200};
   const key=(await t.get(db.doc('orderKeys/'+encodeURIComponent('frame|'+id)))).data();if(!key)throw Error('Frame not found');
   const orderRef=db.doc('orders/'+key.posId),o=(await t.get(orderRef)).data();if(!o||o.voidedAt)throw Error('Order unavailable');
+  if(!isLocal()&&o.stagingTest===true)throw Error('Archived fictional orders cannot accept real payments');
   const it=o.items.find(i=>i.kind==='frame'&&i.existingId===id);if(!it||it.addOnType||it.lateLetter||/SHIP|DELIVER|COMPLET|REFUND|CANCEL/i.test(it.status))throw Error('Frame cannot accept another letter');
-  const target={...value,id,posId:o.posId,recordedBy:actor.uid,createdAt:now()};
+  const target={...value,stagingTest:o.stagingTest===true,id,posId:o.posId,recordedBy:actor.uid,createdAt:now()};
   // Separate late payment: never reprice the original order or charge its ledger twice.
   const items=o.items.map(i=>i===it?{...i,lateLetter:target}:i);
-  t.create(ref,target);t.update(orderRef,{items,version:o.version+1,updatedAt:now()});
+  const updated={...o,items,version:o.version+1,updatedAt:now(),updatedBy:actor.uid};
+  t.create(ref,target);t.set(orderRef,updated);t.create(orderRef.collection('revisions').doc(String(updated.version)),updated);
+  t.create(db.doc('integrationOutbox/'+o.posId+'_SHEETS_'+updated.version),{type:'SHEETS',posId:o.posId,version:updated.version,snapshot:updated,status:'NOT_REQUESTED',manualRequested:false,attempts:0,createdAt:now()});
   t.create(db.doc('earnings/'+encodeURIComponent('LETTER:'+id)),{key:'LETTER:'+id,type:'Letter Commission',employee:value.addOnCommissionRecipient,amount:50,letterSale:200,frameId:id,posId:o.posId,paymentDate:value.paymentDate,status:'ACTIVE',updatedAt:now()});
   t.create(db.collection('audit').doc(),{action:'LATE_LETTER',actor:actor.uid,at:now(),posId:o.posId,after:target});
-  t.create(db.doc('notificationOutbox/ADDON_'+id),{...eligibility(notificationPolicy,now()),type:'LATE_VIBER',posId:o.posId,status:'QUEUED',attempts:0,createdAt:now(),snapshot:target});
+  t.create(db.doc('notificationOutbox/ADDON_'+id),{...eligibility(notificationPolicy,now()),type:'LATE_VIBER',stagingTest:o.stagingTest===true,realViberActivation:viberPolicy.realAutomaticDeliveryActivatedAt||null,posId:o.posId,status:'QUEUED',attempts:0,createdAt:now(),snapshot:target});
   return {ok:true,alreadyRecorded:false,id,amount:200};
  });
 });
@@ -268,7 +276,7 @@ exports.editOrderRecord=call(readers,async ({posId,expectedVersion,patch},actor)
  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID');
  return db.runTransaction(async t=>{
   const ref=db.doc('orders/'+posId),snap=await t.get(ref),prior=snap.data();
-  if(!prior||prior.voidedAt)throw Error('Order unavailable');
+  if(!prior||prior.voidedAt)throw Error('Order unavailable');if(!isLocal()&&prior.stagingTest===true)throw Error('Archived fictional records cannot be changed');
   if(prior.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');
   const next=applyRecordEdit(prior,patch,actor);
   for(const item of next.items.filter(i=>i.assignedTo)){
@@ -286,10 +294,10 @@ const sheetsTransport=createSheetsTransport(db);
 exports.mirrorOutbox=onDocumentCreated({database:'rocketfix360database',document:'integrationOutbox/{eventId}',region:REGION,serviceAccount:'855901392227-compute@developer.gserviceaccount.com',retry:true,timeoutSeconds:60},async event=>{
  staging();if(event.data)await processMirror(db,event.data.ref,sheetsTransport);
 });
-exports.integrationStatus=call(['owner','admin'],async()=>{
+exports.integrationStatus=call(['owner','admin'],async(_data,actor)=>{
  const [mirrors,notifications,remit]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('remitSyncLedger').orderBy('updatedAt','desc').limit(100).get()]);
- const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
- return {remit:remit.docs.map(d=>{const l=d.data();return {eventId:d.id,type:'REMIT',posId:l.posId,status:l.status,attempts:l.attempts||0,errorCode:l.lastError||'',row:l.row||null,version:l.lastSyncedVersion||0,testOnly:l.spreadsheetId===require('./remit-config.json').spreadsheetId};}),sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),remitDestination:{label:require('./remit-live-config.json').destinationLabel,testOnly:false,spreadsheetId:require('./remit-live-config.json').spreadsheetId,sheetId:1830742337},sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:!isLocal()&&!!viberPolicy.automaticDeliveryActivatedAt};
+ const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,canVerifyReal:actor.role==='owner'&&n.type==='VIBER'&&n.stagingTest===false&&n.status==='SIMULATED'&&n.provider==='LOCAL'&&viberPolicy.controlledRealVerificationEnabled===true&&n.posId===viberPolicy.realVerificationPosId,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
+ return {remit:remit.docs.filter(d=>isLocal()||d.data().spreadsheetId!==require('./remit-config.json').spreadsheetId).map(d=>{const l=d.data();return {eventId:d.id,type:l.tab==='Orders'?'FRAME':'REMIT',posId:l.posId,status:l.status,attempts:l.attempts||0,errorCode:l.lastError||'',row:l.row||null,version:l.lastSyncedVersion||0,testOnly:l.spreadsheetId===require('./remit-config.json').spreadsheetId};}),sheets:mirrors.docs.filter(d=>isLocal()||d.data().snapshot?.stagingTest===false&&d.data().status!=='NOT_REQUESTED').map(d=>project(d,'SHEETS')),notifications:notifications.docs.filter(d=>isLocal()||d.data().stagingTest===false||d.data().snapshot?.stagingTest===false).map(d=>project(d)),remitDestination:{label:require('./remit-live-config.json').destinationLabel,testOnly:false,spreadsheetId:require('./remit-live-config.json').spreadsheetId,sheetId:1830742337},sheetsEnabled:require('./mirror-policy').testWritesAuthorized,frameDestination:{label:require('./frame-mirror-config.json').destinationLabel,spreadsheetId:require('./frame-mirror-config.json').spreadsheetId,sheetId:0},viberEnabled:!isLocal()&&!!viberPolicy.realAutomaticDeliveryActivatedAt};
 });
 exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  if(!/^[0-9]{8}_SHEETS_[0-9]+$/.test(String(eventId)))throw Error('Invalid mirror event');
@@ -300,8 +308,8 @@ exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
  await processMirror(db,ref,sheetsTransport);return {ok:true};
 });
 // Manual editing-only TEST REMIT synchronization; no automatic event trigger.
-const manualRemit=require('./manual-remit').createManualRemit(db),liveRemit=require('./live-remit').createLiveRemit(db);
-async function remitFor(data){if(!/^\d{8}$/.test(String(data.posId||'')))throw Error('Invalid POS ID');const o=(await db.doc('orders/'+data.posId).get()).data();if(!o)throw Error('Saved Firebase order not found');return o.stagingTest===true?manualRemit:liveRemit;}
+const manualRemit=require('./manual-remit').createManualRemit(db),liveRemit=require('./live-remit').createLiveRemit(db),liveFrame=require('./live-frame-mirror').createLiveFrameMirror(db);
+async function remitFor(data){if(!/^\d{8}$/.test(String(data.posId||'')))throw Error('Invalid POS ID');const o=(await db.doc('orders/'+data.posId).get()).data();if(!o)throw Error('Saved Firebase order not found');if(o.stagingTest===true){if(!isLocal())throw Error('Fictional orders are archived; mirroring is disabled');return manualRemit;}return String(data.itemKey||'').split('|')[1]==='frame'?liveFrame:liveRemit;}
 exports.previewRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).preview(data,actor));
 exports.syncRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).sync(data,actor));
 exports.reconcileRemitMirror=call(['owner','admin'],async (data,actor)=>(await remitFor(data)).reconcile(data,actor));

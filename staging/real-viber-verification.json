@@ -1,0 +1,14 @@
+{
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "verifiedAt": "2026-11-10T19:17:28.140Z",
+  "posId": "64088235",
+  "eventId": "64088235_VIBER",
+  "eventStatus": "SENT",
+  "provider": "VIBER",
+  "providerResponseRecorded": true,
+  "realProviderAttempts": 1,
+  "notificationEventCount": 1,
+  "paymentUnchanged": true,
+  "refreshAndReplayVerified": true
+}

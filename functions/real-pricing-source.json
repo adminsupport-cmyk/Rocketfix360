@@ -1,0 +1,97 @@
+{
+  "sourceVerified": true,
+  "fixtureOnly": false,
+  "source": {
+    "spreadsheetId": "10W8zrKf9rX-BFH2VLDyj8dwNlVJDca2_yArN9eIyNwY",
+    "tab": "POS Frame Pricing",
+    "range": "A1:H25",
+    "readAt": "2026-11-10T18:42:12.315Z",
+    "standardPrices": "Owner confirmed 2026-11-11"
+  },
+  "standards": {
+    "10\"x13\" - Small": 799,
+    "13\"x17\" - Medium": 999,
+    "18\"x26.5\" - Large": 2299,
+    "25.5\"x35\" - X-Large": 3199
+  },
+  "rates": {
+    "Luzon|Small": {
+      "rate": 220,
+      "days": "1-3 days"
+    },
+    "Luzon|Medium": {
+      "rate": 220,
+      "days": "1-3 days"
+    },
+    "Luzon|Large": {
+      "rate": 220,
+      "days": "1-3 days"
+    },
+    "Luzon|XL": {
+      "rate": 390,
+      "days": "1-3 days"
+    },
+    "Visayas|Small": {
+      "rate": 240,
+      "days": "3-5 days"
+    },
+    "Visayas|Medium": {
+      "rate": 240,
+      "days": "3-5 days"
+    },
+    "Visayas|Large": {
+      "rate": 240,
+      "days": "3-5 days"
+    },
+    "Visayas|XL": {
+      "rate": 393,
+      "days": "3-5 days"
+    },
+    "Mindanao|Small": {
+      "rate": 220,
+      "days": "5-7 days"
+    },
+    "Mindanao|Medium": {
+      "rate": 230,
+      "days": "5-7 days"
+    },
+    "Mindanao|Large": {
+      "rate": 249,
+      "days": "5-7 days"
+    },
+    "Mindanao|XL": {
+      "rate": 393,
+      "days": "5-7 days"
+    }
+  },
+  "custom": {
+    "framedRate": 4.3,
+    "framedBase": 400,
+    "framedMinimum": 300,
+    "canvasRate": 2.8,
+    "canvasBase": 200,
+    "canvasMinimum": 0,
+    "printRate": 1.4,
+    "printBase": 200,
+    "printMinimum": 0,
+    "framedMinWidth": 10,
+    "framedMaxWidth": 48,
+    "framedMinHeight": 10,
+    "framedMaxHeight": 48,
+    "printMinWidth": 10,
+    "printMaxWidth": 48,
+    "printMinHeight": 10,
+    "printMaxHeight": 99,
+    "canvasMinWidth": 20,
+    "canvasMaxWidth": 36,
+    "canvasMinHeight": 20,
+    "canvasMaxHeight": 99
+  },
+  "tipRecipients": [
+    "Select",
+    "Joyce",
+    "Renz",
+    "Joy",
+    "Lerni"
+  ]
+}
