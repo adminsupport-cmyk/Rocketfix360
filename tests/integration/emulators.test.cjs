@@ -140,7 +140,7 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  await t.test('integration visibility and retries are owner/admin only; unverified test mirrors never send',async()=>{
  await assert.rejects(call('integrationStatus',{},'sales'),{code:'PERMISSION_DENIED'});const data=await call('integrationStatus');assert.equal(data.sheetsEnabled,false);assert.equal(data.viberEnabled,false);assert.ok(data.sheets.length>0);assert.ok(!JSON.stringify(data).includes('snapshot'));
  const event=(await db.collection('integrationOutbox').limit(1).get()).docs[0];
- await require('../../functions/sheets-mirror').processMirror(db,event.ref,{upsert:async()=>assert.fail('No external test workbook authorized')});assert.equal((await event.ref.get()).data().status,'BLOCKED');
+ await require('../../functions/sheets-mirror').processMirror(db,event.ref,{upsert:async()=>assert.fail('No external test workbook authorized')});assert.equal((await event.ref.get()).data().status,'NOT_REQUESTED');
  await assert.rejects(call('retrySheetsMirror',{eventId:event.id}),/confirmed non-write/);
  const dash=await call('dashboard');assert.ok(dash.pendingEditing>=0&&dash.pendingFrames>=0);assert.equal(dash.salesToday,dash.editingToday+dash.framingToday);
  });

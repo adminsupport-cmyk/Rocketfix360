@@ -1,6 +1,7 @@
 'use strict';
 const {createHash}=require('node:crypto');
 const policy=require('./notification-policy');
+const {mayDeliver}=require('./notification-eligibility');
 const {assertStaging}=require('./runtime');
 
 class DeliveryError extends Error{
@@ -62,17 +63,17 @@ async function sendViber(content,context,credentials,{fetchImpl=fetch,timeoutMs=
  finally{clearTimeout(timer);}
 }
 
-function createProviderAdapter({readCredentials,env=process.env}={}){
+function createProviderAdapter({readCredentials,env=process.env,deliveryPolicy=policy}={}){
  return async (content,context)=>{
   assertStaging(env);
   // No secret lookup, SMTP connection or HTTPS request while authorization is off.
-  if(!policy.externalSendingAuthorized)return {id:'SIMULATED',simulated:true,provider:'LOCAL'};
+  if(!deliveryPolicy.externalSendingAuthorized||!mayDeliver(deliveryPolicy,context))return {id:'SIMULATED',simulated:true,provider:'LOCAL'};
   if(context.type==='CUSTOMER'){
-   if(!policy.allowedTestEmails.includes(address(content.to)))throw new DeliveryError('TEST_DESTINATION_BLOCKED',true);
+   if(!deliveryPolicy.allowedTestEmails.includes(address(content.to)))throw new DeliveryError('TEST_DESTINATION_BLOCKED',true);
    return sendEmail(content,context,readCredentials());
   }
   const credentials=readCredentials();
-  if(!policy.allowedTestViberSenderIds.includes(credentials.viberSender))throw new DeliveryError('TEST_DESTINATION_BLOCKED',true);
+  if(!deliveryPolicy.allowedTestViberSenderIds.includes(credentials.viberSender))throw new DeliveryError('TEST_DESTINATION_BLOCKED',true);
   return sendViber(content,context,credentials);
  };
 }

@@ -1,0 +1,13 @@
+{
+  "project": "rocketfix-360-staging",
+  "verifiedAt": "2026-11-10T08:00:21.816Z",
+  "messageSent": false,
+  "httpStatus": 200,
+  "providerStatus": 0,
+  "channelName": "REMIT - RF",
+  "storedSenderIsSuperadmin": true,
+  "rocketfixNameMatches": false,
+  "status": "AUTHORIZED_CHANNEL_IDENTITY_VERIFIED",
+  "expectedChannelName": "REMIT - RF",
+  "channelNameConfirmedByOwner": true
+}

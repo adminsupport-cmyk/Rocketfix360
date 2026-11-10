@@ -11,10 +11,7 @@ function mirrorPlan(o){
   const key=o.posId+'|'+i.kind+'|'+i.existingId,sh=o.shipping||{};
   if(i.kind==='editing'){
    const first=o.items.find(x=>x.kind==='editing')===i;
-   rows.push({destination:'master',tab:'REMIT',firstDataRow:6,keyColumn:18,identityColumn:17,identity:i.existingId,key,cells:{1:o.paymentDate,2:o.email,3:[o.first,o.last].filter(Boolean).join(' '),4:i.orderType,5:i.fileType,6:i._paid,11:i.frameOrderId||'',12:o.tipRecipient||'Select',13:first?o.tip:0,14:i.notes||o.remarks||'',15:o.proofUrl||'',16:o.posId,17:i.existingId,18:key,19:o.createdAt,20:o.updatedAt,21:o.method,22:sh.ship||'',23:i._paid,24:i._discount,25:'SYNCED',26:o.received,27:i.rushTargetDate||''}});
-   // Tracking identity is the existing editing ID. Existing filled workflow/file
-   // cells are preserved by the transport; assignment/status mappings need schema approval.
-   if(['NORMAL FILE','RUSH FILE'].includes(i.fileType))rows.push({destination:'master',tab:'Tracking',firstDataRow:10251,keyColumn:1,identityColumn:1,identity:i.existingId,key:i.existingId,blankOnly:true,cells:{1:i.existingId,2:o.email,3:[o.first,o.last].filter(Boolean).join(' '),4:i.orderType,5:'Handed',6:i._paid,7:i.fileUrl||'',11:'Ready',12:i.fileType==='RUSH FILE'?'Urgent':'Normal',14:i.rushTargetDate||'',15:i.frameOrderId||''}});
+   rows.push({destination:'master',tab:'REMIT',firstDataRow:6,keyColumn:18,identityColumn:17,identity:i.existingId,key,cells:{...(i.fileUrl?{7:i.fileUrl}:{}),...(i.noteFileUrl?{9:i.noteFileUrl}:{}),1:o.paymentDate,2:o.email,3:[o.first,o.last].filter(Boolean).join(' '),4:i.orderType,5:i.fileType,6:i._paid,11:i.frameOrderId||'',12:o.tipRecipient||'Select',13:first?o.tip:0,14:i.notes||o.remarks||'',15:o.proofUrl||'',16:o.posId,17:i.existingId,18:key,19:o.createdAt,20:o.updatedAt,21:o.method,22:sh.ship||'',23:i._paid,24:i._discount,25:'SYNCED',26:o.received,27:i.rushTargetDate||''}});
   }else{
    const parts=String(sh.receiverName||[o.first,o.last].filter(Boolean).join(' ')).trim().split(/\s+/),last=parts.length>1?parts.pop():'';
    const cells={1:sh.ship||'LBC',3:i.existingId,4:i.size,5:i.design,6:i.amount,7:o.method,8:parts.join(' '),9:last,10:sh.contactPhone||o.phone||'',11:o.email,12:sh.street||'',13:sh.barangay||'',14:sh.city||'',15:sh.province||'',16:sh.postal||'',17:[`Shipping: ₱${Number(i.shippingFee||0).toFixed(2)} (${sh.area||''}, ${i.shippingTier||''}, ${i.shippingDays||''})`,sh.notes,i.notes,o.remarks].filter(Boolean).join(' | '),39:o.posId,40:key,41:o.paymentDate,42:i._paid,43:i._discount,44:o.createdAt,45:o.updatedAt,46:o.items.filter(x=>x.kind==='editing'&&x.frameOrderId===i.existingId).map(x=>x.existingId).join(', '),47:'SYNCED'};
@@ -34,7 +31,7 @@ function mirrorPlan(o){
 function validateConfig(cfg,p=policy){
  if(p.testWritesAuthorized!==true||p.liveMirroringAuthorized!==false)throw Error('TEST_MIRROR_DISABLED');
  if(!cfg||cfg.environment!=='test'||cfg.schemaVerified!==true||!cfg.workbooks?.master||!cfg.workbooks?.frames)throw Error('VERIFIED_TEST_WORKBOOKS_REQUIRED');
- const ids=Object.values(cfg.workbooks);if(new Set(ids).size!==2||ids.some(id=>!p.approvedTestWorkbookIds.includes(id)))throw Error('TEST_DESTINATION_BLOCKED');
+ const ids=Object.values(cfg.workbooks);const production=Object.values(require('./mirror-destinations.json').eventualProductionDestinations).map(x=>x.spreadsheetId);if(ids.some(id=>production.includes(id)))throw Error('PRODUCTION_DESTINATION_DISABLED');if(new Set(ids).size!==2||ids.some(id=>!p.approvedTestWorkbookIds.includes(id)))throw Error('TEST_DESTINATION_BLOCKED');
  if(!cfg.writerServiceAccount||!cfg.headerFingerprints)throw Error('SCHEMA_AND_WRITER_REQUIRED');
  return cfg;
 }
@@ -42,6 +39,7 @@ function validateConfig(cfg,p=policy){
 async function processMirror(db,ref,transport,{integrationPolicy=policy}={}){
  const claim=await db.runTransaction(async t=>{
   const snap=await t.get(ref),event=snap.data();if(!event||event.status!=='QUEUED')return null;
+  if(event.manualRequested!==true){t.update(ref,{status:'NOT_REQUESTED',updatedAt:now()});return null;}
   const cfg=(await t.get(db.doc('stagingConfig/sheetsMirror'))).data();
   try{validateConfig(cfg,integrationPolicy);}catch(error){t.update(ref,{status:'BLOCKED',errorCode:error.message,updatedAt:now()});return null;}
   if((event.attempts||0)>=3){t.update(ref,{status:'FAILED',errorCode:'RETRY_LIMIT',updatedAt:now()});return null;}

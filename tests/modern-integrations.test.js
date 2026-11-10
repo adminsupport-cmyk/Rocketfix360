@@ -6,7 +6,7 @@ const actor={role:'owner',uid:'owner-a'};
 const header=Array(27).fill('');header[15]='POS Transaction ID';header[16]='POS Editing Order ID';header[17]='POS Item Key';
 const cfg={environment:'test',schemaVerified:true,workbooks:{master:'MASTER_TEST',frames:'FRAME_TEST'},writerServiceAccount:'writer@test.invalid',timeZone:'Asia/Manila',headerFingerprints:{'master:REMIT':digest([header])},schemas:{'master:REMIT':{headerRange:'REMIT!A5:AA5',nextRow:6}}};
 const policy={testWritesAuthorized:true,liveMirroringAuthorized:false,approvedTestWorkbookIds:['MASTER_TEST','FRAME_TEST']};
-function mirrorFixture(){const db=memoryDb(),o=sample(),ref=db.doc('integrationOutbox/12345678_SHEETS_1');db.put('orders/'+o.posId,o);db.put('stagingConfig/sheetsMirror',cfg);db.put(ref.path,{status:'QUEUED',attempts:0,posId:o.posId,snapshot:o});return {db,o,ref};}
+function mirrorFixture(){const db=memoryDb(),o=sample(),ref=db.doc('integrationOutbox/12345678_SHEETS_1');db.put('orders/'+o.posId,o);db.put('stagingConfig/sheetsMirror',cfg);db.put(ref.path,{status:'QUEUED',manualRequested:true,attempts:0,posId:o.posId,snapshot:o});return {db,o,ref};}
 test('structured record edits preserve payments, allocations, tips, Excess and identifiers',()=>{
  const old=sample(),next=applyRecordEdit(old,{first:'Corrected',shipping:{receiverName:'Correct Recipient'},items:[{itemKey:old.items[0].itemKey,status:'Finalizing',fileUrl:'https://drive.google.com/file/d/example/view'}]},actor);
  for(const key of ['received','due','editPaid','framePaid','tip','excess','discount','posId'])assert.equal(next[key],old[key]);assert.equal(next.items[0].existingId,old.items[0].existingId);assert.equal(next.items[0]._paid,old.items[0]._paid);assert.equal(next.first,'Corrected');assert.equal(next.items[0].status,'Finalizing');
@@ -32,7 +32,7 @@ test('disabled mirror policy blocks network and credential lookup before deliver
 });
 test('mirror processing claims once, logs attempts, and does not change the financial receipt',async()=>{
  const {db,ref,o}=mirrorFixture();let calls=0;const transport={upsert:async p=>{calls++;assert.equal(db.data(ref.path).status,'PROCESSING');return {tab:p.tab,row:7};}};
- await Promise.all([processMirror(db,ref,transport,{integrationPolicy:policy}),processMirror(db,ref,transport,{integrationPolicy:policy})]);assert.equal(calls,3);assert.equal(db.data(ref.path).status,'SYNCED');assert.deepEqual(db.data('orders/'+o.posId),o);await processMirror(db,ref,transport,{integrationPolicy:policy});assert.equal(calls,3);
+ await Promise.all([processMirror(db,ref,transport,{integrationPolicy:policy}),processMirror(db,ref,transport,{integrationPolicy:policy})]);assert.equal(calls,2);assert.equal(db.data(ref.path).status,'SYNCED');assert.deepEqual(db.data('orders/'+o.posId),o);await processMirror(db,ref,transport,{integrationPolicy:policy});assert.equal(calls,2);
 });
 test('Sheets failures retain the payment; uncertain results never auto-replay or expose raw errors',async()=>{
  for(const confirmedNoWrite of [true,false]){const {db,ref,o}=mirrorFixture();let calls=0;const adapter={upsert:async()=>{calls++;throw Object.assign(Error('private provider response'),{confirmedNoWrite});}};await processMirror(db,ref,adapter,{integrationPolicy:policy});assert.equal(db.data(ref.path).status,confirmedNoWrite?'FAILED':'REVIEW');assert.deepEqual(db.data('orders/'+o.posId),o);await processMirror(db,ref,adapter,{integrationPolicy:policy});assert.equal(calls,1);assert.ok(!JSON.stringify(db.entries()).includes('private provider response'));}
@@ -47,4 +47,11 @@ test('Sheets transport reuses reserved rows across events and refuses formula/hi
  }};
  const adapter=createSheetsTransport(db,{integrationPolicy:policy,clientFactory:async()=>api});await adapter.upsert(plan,cfg);await adapter.upsert(plan,cfg);assert.equal(writes,1);assert.equal(db.data('mirrorMappings/'+digest(['MASTER_TEST','REMIT',plan.key])).row,6);
  const next={...plan,version:2};stored[5]='=SUM(A1:A2)';await assert.rejects(adapter.upsert(next,cfg),/CONFIRMED_NO_WRITE/);assert.equal(writes,1);
+});
+
+test('unrequested payment intents never mirror automatically and editing uses REMIT only',async()=>{
+ const {db,ref,o}=mirrorFixture();db.put(ref.path,{...db.data(ref.path),manualRequested:false});
+ await processMirror(db,ref,{upsert:async()=>assert.fail('No automatic Sheets writes')},{integrationPolicy:policy});
+ assert.equal(db.data(ref.path).status,'NOT_REQUESTED');assert.deepEqual(db.data('orders/'+o.posId),o);
+ assert.deepEqual(mirrorPlan(o).filter(x=>x.destination==='master').map(x=>x.tab),['REMIT']);
 });

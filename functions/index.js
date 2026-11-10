@@ -3,11 +3,16 @@ const {onCall,HttpsError}=require('firebase-functions/v2/https');
 const httpsInvocation=require('./callable-options').callableOptions();
 const {defineSecret}=require('firebase-functions/params');
 const notificationPolicy=require('./notification-policy');
+const {eligibility}=require('./notification-eligibility');
 const {createProviderAdapter}=require('./provider-adapters');
 const credentialNames={smtpHost:'RF_SMTP_HOST',smtpPort:'RF_SMTP_PORT',smtpUser:'RF_SMTP_USER',smtpPass:'RF_SMTP_PASS',smtpFrom:'RF_SMTP_FROM',viberToken:'RF_VIBER_CHANNEL_TOKEN',viberSender:'RF_VIBER_CHANNEL_SENDER_ID'};
-const credentialBindings=notificationPolicy.externalSendingAuthorized?Object.fromEntries(Object.entries(credentialNames).map(([key,name])=>[key,defineSecret(name)])):{};
-const providerSecrets=notificationPolicy.externalSendingAuthorized?Object.values(credentialBindings):[];
-const providerAdapter=createProviderAdapter({readCredentials:()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]))});
+const viberPolicy=require('./viber-policy.json');
+const credentialBindings=Object.fromEntries(Object.entries(credentialNames).filter(([key])=>notificationPolicy.externalSendingAuthorized||key.startsWith('viber')).map(([key,name])=>[key,defineSecret(name)]));
+const providerSecrets=Object.values(credentialBindings);
+const readCredentials=()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]));
+const emailAdapter=createProviderAdapter({readCredentials});
+const viberAdapter=require('./viber-staging').adapter(readCredentials);
+const providerAdapter=(content,context)=>context.type==='VIBER'?viberAdapter(content,context):emailAdapter(content,context);
 const {onDocumentCreated}=require('firebase-functions/v2/firestore');
 const admin=require('firebase-admin');
 const {FieldValue,FieldPath,getFirestore}=require('firebase-admin/firestore');
@@ -18,6 +23,7 @@ const {applyRecordEdit}=require('./record-edits');
 const {dashboardTotals}=require('./dashboard');
 const {processMirror}=require('./sheets-mirror');
 const {createSheetsTransport}=require('./sheets-transport');
+const {fixtures,fixtureContext,isLocal,validateFixtureOrder}=require('./staging-orders');
 admin.initializeApp();
 const db=getFirestore(admin.app(),'rocketfix360database'), REGION='asia-southeast1';
 const {assertStaging,assertStagingOrder,assertFinancialTesting}=require('./runtime');
@@ -67,7 +73,6 @@ exports.getOrder=call(readers,async ({posId,frameId,requestId},actor)=>{
  return {order:publicOrder(o,actor.role,actor.uid)};
 });
 exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
- assertFinancialTesting();
  assertStagingOrder(order);
  if(!/^[a-zA-Z0-9_-]{16,100}$/.test(String(requestId||'')))throw Error('A stable request ID is required');
  const fingerprint=createHash('sha256').update(JSON.stringify({order,expectedVersion:expectedVersion||null})).digest('hex');
@@ -77,12 +82,16 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
  const outcome=await db.runTransaction(async t=>{
   const replay=await t.get(replayRef);
   if(replay.exists){if(replay.data().fingerprint!==fingerprint)throw Error('Request ID reused with changed content');return replay.data().outcome;}
+  const verificationRef=db.doc('stagingConfig/viberControlledVerification');
+  const verification=await t.get(verificationRef);
   const cfg=await t.get(db.doc('stagingConfig/pricing'));
-  const clean=validate(quoteOrder(order,cfg.data()||{}));
+  const test=fixtureContext(order,cfg.data()||{},process.env,notificationPolicy.allowedTestEmails);
+  const clean=validate(quoteOrder(order,test.config,order.stagingTest!==true));
   const priorSnap=await t.get(doc),prior=priorSnap.exists?priorSnap.data():null;
   if(prior && !expectedVersion)throw Error('POS ID exists. Open it in history to edit; never resubmit a payment.');
   if(!prior && expectedVersion)throw Error('Order was not found; refresh without creating duplicate IDs');
   if(prior){
+    if(!isLocal()&&prior.stagingTest!==true)throw Error('An existing non-test order cannot be converted into a fictional test order');
     if(prior.voidedAt)throw Error('Voided transaction cannot be edited');
     if(prior.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');
     if(prior.items.some(old=>!clean.items.some(x=>x.kind===old.kind&&x.existingId===old.existingId)))throw Error('Existing linked order IDs cannot be deleted or changed');
@@ -100,7 +109,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const keys=newItems.map(it=>db.doc('orderKeys/'+encodeURIComponent(it.kind+'|'+it.existingId)));
   const keySnaps=await Promise.all(keys.map(k=>t.get(k)));
   keySnaps.forEach((s,i)=>{if(s.exists && s.data().posId!==id)throw Error('Order ID already used: '+newItems[i].existingId);});
-  const target={...clean,environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
+  const target={...clean,stagingTest:true,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:'FICTIONAL TEST ORDER',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
   t.set(doc,target);
   t.create(db.doc('orders/'+id+'/revisions/'+target.version),{...target});
   keys.forEach((key,i)=>t.set(key,{posId:id,itemKey:newItems[i].itemKey,kind:newItems[i].kind,orderId:newItems[i].existingId,createdAt:currentTime}));
@@ -109,14 +118,16 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   for(const e of oldEarnings.filter(x=>!nextEarnings.some(y=>y.key===x.key))){t.set(db.doc('earnings/'+encodeURIComponent(e.key)),{...e,status:'VOIDED',posId:id,updatedAt:currentTime});}
   for(const e of nextEarnings){t.set(db.doc('earnings/'+encodeURIComponent(e.key)),{...e,status:'ACTIVE',posId:id,paymentDate:target.paymentDate,updatedAt:currentTime});}
   const mirrorRef=db.doc('integrationOutbox/'+id+'_SHEETS_'+target.version);
-  t.create(mirrorRef,{type:'SHEETS',posId:id,version:target.version,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
+  t.create(mirrorRef,{type:'SHEETS',posId:id,version:target.version,snapshot:target,status:'NOT_REQUESTED',manualRequested:false,attempts:0,createdAt:currentTime});
   const action=prior?'UPDATED':'CREATED';
   const audit=db.collection('audit').doc();t.set(audit,{posId:id,action,actor:actor.uid,at:currentTime,previousVersion:prior?.version||0,version:target.version,before:prior,after:target});
   // Outbox committed atomically with the order; delivery cannot roll back payment.
   // Notifications on NEW remittances, not every edit. No duplicate sends for a POS ID.
   if(!prior){
-   if(target.email&&target.email.toUpperCase()!=='N/A')t.create(db.doc('notificationOutbox/'+id+'_CUSTOMER'),{type:'CUSTOMER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
-   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
+   if(target.email&&target.email.toUpperCase()!=='N/A')t.create(db.doc('notificationOutbox/'+id+'_CUSTOMER'),{...eligibility(notificationPolicy,currentTime),type:'CUSTOMER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
+   const controlledVerification=viberPolicy.controlledVerificationEnabled===true&&!verification.exists&&[target.first,target.last].filter(Boolean).join(' ')===viberPolicy.controlledCustomer;
+   if(controlledVerification)t.create(verificationRef,{posId:id,eventId:id+'_VIBER',createdAt:currentTime});
+   t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{...eligibility(notificationPolicy,currentTime),stagingTest:true,controlledVerification,viberActivation:viberPolicy.automaticDeliveryActivatedAt,type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
   }
   const outcome={posId:id,version:target.version,wasEdit:!!prior,record:target};
   t.create(replayRef,{fingerprint,outcome,createdAt:currentTime});return outcome;
@@ -189,7 +200,7 @@ exports.retryNotification=call(['owner','admin'],async ({eventId})=>{
  });
  await deliver(db,ref,providerAdapter);return {ok:true};
 },{secrets:providerSecrets});
-exports.getPricing=call(writer,async()=>({...(await db.doc('stagingConfig/pricing').get()).data()||{rates:{},custom:{}}}));
+exports.getPricing=call(writer,async ({stagingTest})=>stagingTest===true?{...fixtures,version:0}:{...(await db.doc('stagingConfig/pricing').get()).data()||{rates:{},custom:{}}});
 exports.savePricing=call(['owner','admin'],async ({config,expectedVersion},actor)=>{
  assertFinancialTesting();
  const clean=pricingConfig(config||{}),ref=db.doc('stagingConfig/pricing');
@@ -197,7 +208,7 @@ exports.savePricing=call(['owner','admin'],async ({config,expectedVersion},actor
  const target={...clean,version:(prior?.version||0)+1,updatedAt:now()};t.set(ref,target);
  t.create(db.collection('audit').doc(),{action:'PRICING',actor:actor.uid,at:now(),before:prior||null,after:target});return target;});
 });
-exports.quote=call(writer,async ({order})=>{assertFinancialTesting();return {order:quoteOrder(order,(await db.doc('stagingConfig/pricing').get()).data()||{},false)};});
+exports.quote=call(writer,async ({order})=>{const test=fixtureContext(order,(await db.doc('stagingConfig/pricing').get()).data()||{},process.env,notificationPolicy.allowedTestEmails);return {order:quoteOrder(order,test.config,false),stagingTest:true,fixtureVersion:test.fixtureVersion};});
 exports.listStaff=call(['owner','admin','sales','encoder'],async()=>({staff:(await db.collection('staff').get()).docs.map(d=>({uid:d.id,name:d.data().name,role:d.data().role,active:d.data().active===true}))}));
 exports.setStaff=call(['owner'],async ({uid,name,role,active},actor)=>{
  if(!/^[A-Za-z0-9_-]{1,128}$/.test(String(uid))||!permitted.has(role)||typeof active!=='boolean'||!String(name||'').trim())throw Error('Valid staff UID, name, role and active state required');
@@ -236,7 +247,7 @@ exports.saveLateLetter=call(writer,async (payload,actor)=>{
   t.create(ref,target);t.update(orderRef,{items,version:o.version+1,updatedAt:now()});
   t.create(db.doc('earnings/'+encodeURIComponent('LETTER:'+id)),{key:'LETTER:'+id,type:'Letter Commission',employee:value.addOnCommissionRecipient,amount:50,letterSale:200,frameId:id,posId:o.posId,paymentDate:value.paymentDate,status:'ACTIVE',updatedAt:now()});
   t.create(db.collection('audit').doc(),{action:'LATE_LETTER',actor:actor.uid,at:now(),posId:o.posId,after:target});
-  t.create(db.doc('notificationOutbox/ADDON_'+id),{type:'LATE_VIBER',posId:o.posId,status:'QUEUED',attempts:0,createdAt:now(),snapshot:target});
+  t.create(db.doc('notificationOutbox/ADDON_'+id),{...eligibility(notificationPolicy,now()),type:'LATE_VIBER',posId:o.posId,status:'QUEUED',attempts:0,createdAt:now(),snapshot:target});
   return {ok:true,alreadyRecorded:false,id,amount:200};
  });
 });
@@ -255,7 +266,7 @@ exports.editOrderRecord=call(readers,async ({posId,expectedVersion,patch},actor)
   next.version=prior.version+1;next.updatedAt=now();next.updatedBy=actor.uid;
   t.set(ref,next);t.create(db.doc('orders/'+posId+'/revisions/'+next.version),next);
   t.create(db.collection('audit').doc(),{action:'RECORD_EDIT',posId,actor:actor.uid,at:now(),before:prior,after:next});
-  t.create(db.doc('integrationOutbox/'+posId+'_SHEETS_'+next.version),{type:'SHEETS',posId,version:next.version,snapshot:next,status:'QUEUED',attempts:0,createdAt:now()});
+  t.create(db.doc('integrationOutbox/'+posId+'_SHEETS_'+next.version),{type:'SHEETS',posId,version:next.version,snapshot:next,status:'NOT_REQUESTED',manualRequested:false,attempts:0,createdAt:now()});
   return {ok:true,version:next.version,order:publicOrder(next,actor.role,actor.uid)};
  });
 });

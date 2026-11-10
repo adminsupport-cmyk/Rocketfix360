@@ -29,7 +29,7 @@ async function dispatch(method,args){
   const record=values[0];if(values[1])return unsupported('Google Drive proof upload');
   if(!requests.has(record))requests.set(record,crypto.randomUUID());
   pending.set(record.posId,requests.get(record));
-  const result=await invoke('saveOrder',{order:adapter.toFirebase(record),expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
+  const result=await invoke('saveOrder',{order:{...adapter.toFirebase(record),...(window.firebasePOS.fixtureMode?{stagingTest:true,fixtureAcknowledgement:'FICTIONAL TEST ORDER',fixtureVersion:'ROCKETFIX-STAGING-FICTIONAL-V1'}:{})},expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
   const order=result.record||(await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)})).order;pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
  }
  case 'delete':await invoke('voidOrder',{posId:values[0],expectedVersion:values[1],reason:'Confirmed by employee through original POS deletion workflow'});return {ok:true,deleted:true,posId:values[0]};
@@ -40,9 +40,9 @@ async function dispatch(method,args){
  case 'phLocations':return unsupported('Nationwide location lookup'); // Original province fallback and manual address entry remain available.
  case 'proofStart':case 'proofChunk':return unsupported('Google Drive proof upload');
  case 'framePricingGet':{
-  const cfg=await invoke('getPricing');pricingVersion=cfg.version||0;
+  const cfg=await invoke('getPricing',{stagingTest:window.firebasePOS.fixtureMode});pricingVersion=cfg.version||0;
   // Synthetic rates are allowed only in the isolated demo emulator, never normal staging quotations.
-  return useEmulators?cfg:{rates:{},custom:{}};
+  return window.firebasePOS.fixtureMode?cfg:{rates:{},custom:{}};
  }
  case 'framePricingSave':{
   if(!['owner','admin'].includes(profile.role))throw Error('Only an Owner or Admin can change pricing');
@@ -67,11 +67,11 @@ async function dispatch(method,args){
  }
 }
 window.posAPI={run:adapter.runner(dispatch)};
-window.firebasePOS={isDemo:useEmulators};
+window.firebasePOS={isDemo:useEmulators,get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
 bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
  save:record=>dispatch('execute',['save',[record,null]]),status:posId=>dispatch('execute',['status',[posId]]),
  acceptReceipt:record=>window.acceptCommittedReceipt(record),editPayment:order=>window.loadPaymentCorrection(adapter.fromFirebase(order)),
- notify:(message,error=false,id='')=>window.rfShowSubmitModal({title:error?'Action needed':id?'PAYMENT SAVED ✓':'Notice',message,error,id,sound:!!id&&!error}),
+ notify:(message,error=false,id='')=>window.rfShowSubmitModal({title:error?'Action needed':id&&window.firebasePOS.fixtureMode?'TEST ORDER SAVED ✓':id?'PAYMENT SAVED ✓':'Notice',message,error,id,sound:!!id&&!error}),
  openTab:name=>{window.openTab(name);document.querySelector('nav [data-tab="'+name+'"]')?.dispatchEvent(new Event('click'));},refreshLegacy:()=>window.rfRefreshLive(true)
 });
 const login=document.getElementById('firebaseLogin'),form=document.getElementById('firebaseLoginForm'),button=document.getElementById('loginSubmit'),message=document.getElementById('loginError'),status=document.getElementById('loginStatus');

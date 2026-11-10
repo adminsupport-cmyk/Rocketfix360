@@ -1,0 +1,11 @@
+{
+  "fixtureVersion": "ROCKETFIX-STAGING-FICTIONAL-V1",
+  "fixtureOnly": true,
+  "label": "TEST ONLY — fictional orders, prices and payments; not approved customer quotations",
+  "custom": {"framedRate": 1, "framedBase": 0, "framedMinimum": 1, "printRate": 1, "printBase": 0, "printMinimum": 1, "canvasRate": 1, "canvasBase": 0, "canvasMinimum": 1},
+  "rates": {
+    "Luzon|Small": {"rate": 50, "days": "TEST ONLY"}, "Luzon|Medium": {"rate": 50, "days": "TEST ONLY"}, "Luzon|Large": {"rate": 50, "days": "TEST ONLY"}, "Luzon|XL": {"rate": 50, "days": "TEST ONLY"},
+    "Visayas|Small": {"rate": 50, "days": "TEST ONLY"}, "Visayas|Medium": {"rate": 50, "days": "TEST ONLY"}, "Visayas|Large": {"rate": 50, "days": "TEST ONLY"}, "Visayas|XL": {"rate": 50, "days": "TEST ONLY"},
+    "Mindanao|Small": {"rate": 50, "days": "TEST ONLY"}, "Mindanao|Medium": {"rate": 50, "days": "TEST ONLY"}, "Mindanao|Large": {"rate": 50, "days": "TEST ONLY"}, "Mindanao|XL": {"rate": 50, "days": "TEST ONLY"}
+  }
+}

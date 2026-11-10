@@ -3,6 +3,7 @@
 // for changing this policy. Environment variables and callables cannot enable it.
 module.exports=Object.freeze({
  externalSendingAuthorized:false,
+ automaticDeliveryActivatedAt:null,
  allowedTestEmails:Object.freeze([]),
  allowedTestViberSenderIds:Object.freeze([])
 });

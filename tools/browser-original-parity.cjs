@@ -40,7 +40,7 @@ const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/h
   }
   await page.locator('#tipRecipient').selectOption('Joyce');await page.locator('#tip').fill('10');await page.locator('#received').fill('2000');
   const id=await page.locator('#posId').textContent();saved.push(id);
-  await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='PAYMENT SAVED ✓');
+  await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='TEST ORDER SAVED ✓');
   await page.locator('.rf-submit-close').click();await page.locator('[data-tab="history"]').click();await page.locator('#historyRows').getByText(id,{exact:true}).waitFor();
   assert.equal(await page.locator('#historyRows').getByText(id,{exact:true}).count(),1);
   await page.locator('#historyRows tr').filter({hasText:id}).getByRole('button',{name:'View receipt',exact:true}).click();await page.locator('#rfConfirmedOverlay').waitFor({state:'visible'});await page.getByRole('button',{name:'Confirm',exact:true}).click();
@@ -50,7 +50,7 @@ const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/h
  // Confirm existing edit uses version, same POS and original field groups.
  await page.locator('[data-tab="history"]').click();await page.locator('#historyRows tr').filter({hasText:saved[0]}).getByRole('button',{name:'Edit transaction',exact:true}).click();
  assert.equal(await page.locator('#posId').textContent(),saved[0]);assert.equal(await page.locator('#phone').inputValue(),'09123456789');
- await page.locator('#remarks').fill('Edited sample receipt');await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='PAYMENT SAVED ✓');await page.locator('.rf-submit-close').click();
+ await page.locator('#remarks').fill('Edited sample receipt');await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitTitle').textContent==='TEST ORDER SAVED ✓');await page.locator('.rf-submit-close').click();
  await page.locator('[data-tab="dashboard"]').click();await page.locator('[data-open="daily"]').click();assert.match(await page.locator('#statReceived').textContent(),/₱/);
  // Reference snapshots use neutral empty form values, never call a live backend.
  const ref=await context.newPage();await ref.goto('http://127.0.0.1:5051');

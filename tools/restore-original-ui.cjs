@@ -11,7 +11,7 @@ function generate(){
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
  if(start<0||end<start)throw Error('Original authentication boundary changed');
  const auth=`let posAuthorized=false;
-function loadPaymentCorrection(record){const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);editRecord(record.posId);}
+function loadPaymentCorrection(record){const fixture=document.getElementById('fixtureMode');if(fixture)fixture.checked=record.stagingTest===true;const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);editRecord(record.posId);}
 function acceptCommittedReceipt(record){const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);resetForm();renderReports();rfRefreshLive(true);}
 function setPOSAccess(profile){
  posAuthorized=!!profile;
@@ -42,15 +42,16 @@ function setPOSAccess(profile){
  html=html.replace("if(state==='SENT'||state==='ALREADY_RECORDED'){","if(state==='DISABLED'||state==='SIMULATED'||state==='SENT'||state==='ALREADY_RECORDED'){");
  html=html.replace("const viberText=state==='SENT'?'Viber report SENT.':","const viberText=['DISABLED','SIMULATED'].includes(state)?'Email and Viber sending are disabled.':state==='SENT'?'Viber report SENT.':");
  html=html.replace("vOnly.hidden=!(r.latePaymentRecorded","vOnly.hidden=true; /* External sending disabled. */ void (r.latePaymentRecorded");
- html=html.replace('function rfLateSave(){',"function rfLateSave(){if(!window.firebasePOS?.isDemo){document.getElementById('rfLateMsg').textContent='Payment changes are unavailable while original business rules are being verified.';return;}");
+ html=html.replace("c.fillText('PAYMENT CONFIRMED',540,278)","c.fillText(r.stagingTest?'FICTIONAL TEST ORDER':'PAYMENT CONFIRMED',540,278)");
+ html=html.replace('function rfLateSave(){',"function rfLateSave(){if(!window.firebasePOS?.fixtureMode){document.getElementById('rfLateMsg').textContent='Payment changes are unavailable while original business rules are being verified.';return;}");
  html=html.replace('function saveTransaction(){',`function saveTransaction(){
- if(!window.firebasePOS?.isDemo)return rfNotify('Saving is unavailable while original pricing and payment rules are being verified. No payment has been recorded.',true);`);
- html=html.replace("amount:kind==='frame'?799:0", "amount:kind==='frame'&&window.firebasePOS?.isDemo?799:0");
+ if(!window.firebasePOS?.fixtureMode)return rfNotify('Saving is unavailable while original pricing and payment rules are being verified. No payment has been recorded.',true);`);
+ html=html.replace("amount:kind==='frame'?799:0", "amount:kind==='frame'&&window.firebasePOS?.fixtureMode?799:0");
  html=html.replace('function setFramePrice(uid,size){',`function setFramePrice(uid,size){
- if(!window.firebasePOS?.isDemo){const field=document.querySelector('[data-id="'+uid+'"][data-name="amount"]');if(field)field.value=0;compute();return;}`);
- html=html.replace("$('due').textContent=money(t.due);","$('due').textContent=!window.firebasePOS?.isDemo&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.due);");
- html=html.replace("$('frameSum').textContent=money(t.frame);","$('frameSum').textContent=!window.firebasePOS?.isDemo&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.frame);");
- html=html.replace("$('rfShippingQuote').innerHTML=b.length?", "$('rfShippingQuote').innerHTML=!window.firebasePOS?.isDemo&&b.length?'Pricing and shipping approval is pending. Customer quotations and payments are unavailable.':b.length?");
+ if(!window.firebasePOS?.fixtureMode){const field=document.querySelector('[data-id="'+uid+'"][data-name="amount"]');if(field)field.value=0;compute();return;}`);
+ html=html.replace("$('due').textContent=money(t.due);","$('due').textContent=!window.firebasePOS?.fixtureMode&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.due);");
+ html=html.replace("$('frameSum').textContent=money(t.frame);","$('frameSum').textContent=!window.firebasePOS?.fixtureMode&&t.items.some(x=>x.kind==='frame')?'Awaiting approved quote':money(t.frame);");
+ html=html.replace("$('rfShippingQuote').innerHTML=b.length?", "$('rfShippingQuote').innerHTML=!window.firebasePOS?.fixtureMode&&b.length?'Pricing and shipping approval is pending. Customer quotations and payments are unavailable.':b.length?");
  html=html.replace("rfSetLookupInfo('REMIT customer refresh failed: '+msg.slice(0,170));","rfSetLookupInfo('Customer directory import pending.');");
  html=html.replace("const RF_CUSTOMER_DIRECTORY_CACHE='rocketfix-pos-remit-customers-v25';", "const RF_CUSTOMER_DIRECTORY_CACHE='rocketfix-firebase-customers-parity-v1';");
  // Avoid stale customer PII crossing employee sign-ins; no legacy directory cache.
@@ -73,7 +74,7 @@ function setPOSAccess(profile){
  html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
  html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/modern.css'),'utf8')+'</style></head>');
  html=html.replace(/<nav>[\s\S]*?<\/nav>/,'<nav><button class="active" data-tab="dashboard">Dashboard</button><button data-tab="new">Admin POS</button><button data-tab="editingDatabase">Editing Database</button><button data-tab="frameDatabase">Frame Database</button><button data-tab="history">Remittances</button><button data-tab="settings">Settings</button></nav>');
- html=html.replace('<section class="tab active" id="new">','<section class="tab" id="new">');
+ html=html.replace('<section class="tab active" id="new">','<section class="tab" id="new"><div class="panel"><label><input type="checkbox" id="fixtureMode" onchange="rfLoadFramePricing();compute()"> FICTIONAL STAGING TEST ONLY — no real payment; unverified fixture prices</label><p>Use a TEST or SAMPLE customer name and N/A or .invalid email. Sheets mirroring is disabled.</p></div>');
  html=html.replace('</main>',fs.readFileSync(path.join(root,'tools/templates/modern.html'),'utf8')+'</main>');
  html=html.replace(/<div id="rfQueueDock"[\s\S]*?<div id="rfSubmitOverlay"/,'<div id="rfSubmitOverlay"');
  html=html.replaceAll('Save Remittance','Submit Remittance').replace('Your remittance will upload while you prepare the next order.','Payment confirmation waits only for the Firebase commit.');

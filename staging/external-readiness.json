@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-11-10T07:52:09.785Z",
+  "project": "rocketfix-360-staging",
+  "secrets": [
+    {
+      "name": "RF_VIBER_CHANNEL_TOKEN",
+      "status": "METADATA_PRESENT_VALUE_NOT_READ"
+    },
+    {
+      "name": "RF_VIBER_CHANNEL_SENDER_ID",
+      "status": "METADATA_PRESENT_VALUE_NOT_READ"
+    },
+    {
+      "name": "RF_SMTP_HOST",
+      "status": "NOT_FOUND",
+      "httpStatus": 404
+    },
+    {
+      "name": "RF_SMTP_PORT",
+      "status": "NOT_FOUND",
+      "httpStatus": 404
+    },
+    {
+      "name": "RF_SMTP_USER",
+      "status": "NOT_FOUND",
+      "httpStatus": 404
+    },
+    {
+      "name": "RF_SMTP_PASS",
+      "status": "NOT_FOUND",
+      "httpStatus": 404
+    },
+    {
+      "name": "RF_SMTP_FROM",
+      "status": "NOT_FOUND",
+      "httpStatus": 404
+    }
+  ],
+  "sheets": {
+    "status": "NOT_CONFIGURED",
+    "httpStatus": 404
+  },
+  "realDeliveryEnabled": false
+}

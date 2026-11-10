@@ -1,0 +1,10 @@
+{
+  "productionWritesEnabled": false,
+  "eventualProductionDestinations": {
+    "master": {"spreadsheetId": "10W8zrKf9rX-BFH2VLDyj8dwNlVJDca2_yArN9eIyNwY", "tab": "REMIT", "sheetId": 1830742337, "headerRow": 5, "enabled": false},
+    "frames": {"spreadsheetId": "1kOtnKnD1eHgmCylidPwGW0veIyokbwVUD4hvNaQf-JU", "tab": "Orders", "sheetId": 0, "headerRow": 1, "enabled": false}
+  },
+  "testWorkbookNames": {"master": "ROCKETFIX360 - MASTER TEST", "frames": "ROCKETFIX360 - FRAME ORDERS TEST"},
+  "editingTabs": ["REMIT"],
+  "frameTabs": ["Orders"]
+}

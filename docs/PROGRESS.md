@@ -157,3 +157,14 @@ Pushing the **original** development branch remains dependent on access to the c
 ## Approved backup attempt — authentication blocked
 
 The user approved the recovered-branch GitHub backup. An HTTPS dry-run push failed because local Git has no usable GitHub credentials (`could not read Username`). Strict SSH fallback also failed due to absent trusted host-key configuration; no trust bypass or credential changes were made. The installed GitHub connector exposes no repository-write tool in this session. **No push occurred; remote contents cannot yet be verified.** Authentication for Git on this Mac is required before retrying. The earlier automatic-review authorization issue for this recovery branch is resolved. See RECOVERY_REMOTE.md for exact attempt results. No tests or application files changed in this follow-up.
+
+
+### 2026-11-10 — Viber controlled staging verification
+- Official account-info endpoint accepted staging credentials; channel `REMIT - RF`, configured sender has superadmin role. Owner explicitly confirmed this channel identity. No credentials persisted in reports.
+- One explicitly approved connection-test message was accepted by Viber. Sanitized evidence: `staging/viber-controlled-test.json`. Provider acceptance is not proof of client-side viewing. No order/payment created.
+- Automatic delivery remains OFF. Added immutable commit-time eligibility and activation matching so enabling delivery cannot backfill historical/simulated events. Live remittance-to-channel end-to-end activation remains pending; no deployment performed for this change.
+- SMTP secrets/test inbox and separate Sheets test workbook configuration remain missing. Live REMIT writes remain disabled.
+- Validation for this working tree: 55/55 unit tests, 21/21 emulator test records, syntax checks and browser bundle build passed. Branch `feature/staging-test-remittance-manual-mirror`; changes remain local and undeployed.
+
+### Controlled Firebase-to-Viber staging phase
+- Prepared one-use transaction-bound Viber verification, fixture-only Submit Remittance and immutable activation guards. All 57 unit tests and 21 emulator test records pass; syntax/build pass. Automatic Viber delivery remains off until deployed browser verification passes.
