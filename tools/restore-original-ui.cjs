@@ -27,12 +27,14 @@ function rfFirebaseSession(profile,error){
 async function rfDeviceStartRequest(){
  if(!window.firebasePOS)return rfDeviceError('Connection is starting. Please try again.');
  const btn=document.getElementById('rfDeviceRequestButton');if(btn.disabled)return;btn.disabled=true;
- rfDeviceShowMode('loading','Signing you in…','Verifying your employee account.');
+ rfDeviceError('');
+ const timeout=setTimeout(()=>{if(!rfDeviceReady){btn.disabled=false;rfDeviceError('Sign-in is taking longer than expected. Please check your connection and try again.');}},20000);
  try{await window.firebasePOS.signIn(document.getElementById('rfDeviceNameInput').value.trim(),document.getElementById('rfCompanyPinInput').value);document.getElementById('rfCompanyPinInput').value='';}
  catch(error){btn.disabled=false;rfDeviceShowMode('register');rfDeviceError(error.message);}
+ finally{clearTimeout(timeout);if(!rfDeviceReady)btn.disabled=false;}
 }
 function rfStaffSignOut(){if(confirm('Sign out and change staff?'))window.firebasePOS.signOut();}
-function rfDeviceInit(){rfDeviceShowMode('loading','Connecting securely…','Connecting to Rocketfix POS…');}
+function rfDeviceInit(){rfDeviceShowMode('register');}
 `;
  html=html.slice(0,start)+auth+html.slice(end);
  const gateStart=html.indexOf('<div id="rfDeviceGate">'),gateEnd=html.indexOf('<aside id="rfPosUpdateBanner"');

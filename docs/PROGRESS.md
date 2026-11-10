@@ -1,3 +1,9 @@
+# Login startup unblocked — November 10, 2026
+
+Login fields now appear immediately without waiting for Firebase initialization or showing a startup spinner. Signing in keeps the form available, and errors do not trap the employee behind a loading screen. Checks/build and 42 tests pass. A browser regression deliberately blocked the Firebase bundle and verified that both account fields remained editable. Authentication and role validation remain required. Staging Hosting only.
+
+---
+
 # Fresh dark login — November 10, 2026
 
 Replaced the session-style gate with a fresh dark login card, Rocketfix green accents, employee email/password fields, and keyboard form submission. Removed session/PIN wording from the visible login. Firebase Authentication, employee role checks, and all financial/sending restrictions remain unchanged. Checks/build and all 42 unit tests pass. Browser checks at desktop 1440×1000 and mobile 390×844 pass, including authorized local Owner sign-in using Enter. Hosting-only staging update; no Functions, production or Sheets changes.
