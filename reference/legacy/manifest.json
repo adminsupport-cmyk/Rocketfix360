@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "execution": "offline-audit-only",
+  "sources": [
+    {"name":"FramePricing.gs","aliases":[],"purpose":"Authoritative server pricing, shipping, configuration","reviewedSha256":null},
+    {"name":"DeviceAccess.gs","aliases":["Rocketfix_POS_DeviceAccess_iPad_Response_Reconciliation_V1.gs"],"purpose":"Device/session authorization and action dispatcher","reviewedSha256":null},
+    {"name":"POS_Emailer.gs","aliases":["Rocketfix_POS_Emailer_V8_Short_Lock.gs"],"purpose":"Customer confirmation eligibility and delivery workflow","reviewedSha256":null},
+    {"name":"TransactionMailer.gs","aliases":["Rocketfix_TransactionMailer_V4_POS_ID_Compatible.gs"],"purpose":"Transaction email templates and POS identity","reviewedSha256":null},
+    {"name":"ViberChannel.gs","aliases":["Rocketfix_POS_Viber_Channel_v1.gs"],"purpose":"Channel identity, report format and delivery log protocol","reviewedSha256":null}
+  ],
+  "configuration": {
+    "approvedProductPrices": null,
+    "customProductRatesAndBounds": null,
+    "approvedShippingRatesAndDays": null,
+    "tipRecipientValidationList": null,
+    "trackingBackend": null
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.firebase/
+*-debug.log
+!firestore-debug.log
+.runtime/
+public/app.bundle.js
+public/app.bundle.js.map
+functions/.secret.local
+functions/.env*

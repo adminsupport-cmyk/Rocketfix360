@@ -1,83 +1,65 @@
-# Rocketfix 360 — Firestore POS (separate staging application)
+# Rocketfix 360 staging Firebase POS
 
-This is a **new independent Firebase-based Rocketfix POS starter implementation**, built from the supplied November 9, 2026 Rocketfix Admin POS `Code.gs` and the saved `Index.html`. It **does not access or change** the live Google Sheets POS. It is a serious working codebase, not a deployment or migration of existing live data. It has **not yet been deployed or tested with real Firebase, SMTP or Viber credentials**.
+This build uses only local Firebase emulators for `demo-rocketfix-360`. The browser requires localhost, and every backend entry point refuses non-emulator/non-demo execution. It does not connect to the live Google Sheets POS, send real email or Viber messages, deploy, or import historical payments.
 
-## What is included
+The original uploads remain unchanged in `reference/`. See [the source audit and parity gaps](docs/FEATURE_PARITY.md) and [validation status](docs/PROGRESS.md). This is a staging implementation; full legacy parity is not established.
 
-- Staff Firebase Auth login and server-side active roles (`owner`, `admin`, `sales`, `encoder`, `editor`, `production`).
-- New multi-service POS order: editing and frames in one eight-digit POS ID, server validation of editing `RF12345A` and frame `AB1C2` identifiers, duplicate order-key reservation, immutable order linkage.
-- Payment date, amount received, customer details, notes, discount, tips, tip recipients, overpayment `Excess`, payment proof link, audit log.
-- Frame receiver name, contact, shipping method, shipping fee, address and notes; frame production statuses.
-- Personalized Letter add-on ₱200 with ₱50 recipient commission (based on the source), employee earnings mirror keyed to avoid duplicates.
-- Editing statuses and rush target, linked frame IDs, Google Drive file URLs and assigned editor UID.
-- Server-side atomic order commit through a callable Cloud Function, one primary Firestore database, real-time worker not required; no `PROCESSING` wait before committed record.
-- New-order email + Viber Channel outbox docs written in the same transaction; `onDocumentCreated` immediately attempts delivery separately.
-- Recent sales dashboard, order history, search, CSV export, email/Viber delivery status inspector, owner/admin void safeguard.
-- Strict Firestore rules: no direct browser reads or writes, backend enforces roles.
+## Local development
 
-## Important limitations / parity gaps BEFORE LIVE USE
-
-This is **not a pixel-perfect, fully verified port** of the 1,400+ lines of original Apps Script, the 260 KB original browser interface, and separate external scripts. Some dependencies are missing from the original upload and are not safe to invent:
-
-1. Exact frame design/product pricing, custom canvas sizing and shipping quote formulas (`rfFrameCfgRead_`, `rfFrameProductQuote_`, `rfFrameShippingQuote_`) are external to uploaded `Code.gs`. This Firebase version requires the sales admin to enter **approved item prices and shipping fee**, checked by a user until the actual pricing data is migrated. Do not rely on remembered sample SRPs.
-2. The legacy order status/encoder/Tracking portal, refunds/returns, external loyalty calculations, actual direct customer-photo upload, shipping label creation, customer file access permissions, historical imports, Viber Channel webhook and full email templates are **not yet integrated**. Google Drive is used by URL reference only.
-3. Admin editing currently updates the full financial order. Configure proper staff access and review the payment edit/void policy before production deployment.
-4. New orders receive an email and Viber request only **after** Firestore commit. Delivery is async and may take seconds or longer. `SENT` means provider accepted it; not guaranteed inbox/channel read. A network timeout is marked `REVIEW` to avoid duplicate sending. Email and Viber use different notification events.
-5. This version keeps only recent 150 records in the browser and dashboard calculates totals from recent 1,000 records. Production historical dashboard needs precomputed aggregates/pagination.
-6. Firestore is the sole live data source **for this new app**. No legacy Google Sheets synchronization or Viber replay is provided, intentionally preventing live-double-entry during staging.
-7. Full role-based and payment/notification integration tests with the Firebase Emulator Suite remain mandatory. The pure accounting tests are included.
-
-## One-time deployment procedure (Blaze plan)
-
-Prerequisites: Firebase project (a **new staging project** recommended), Blaze billing, Node 22, Firebase CLI (`npm install -g firebase-tools`), owner Firebase login. No source code contains private credentials.
-
-1. In Firebase Console enable **Authentication → Email/Password** and **Cloud Firestore** (Standard edition). Create a new Web App under Project settings; paste its public `firebaseConfig` values into `public/config.js`. Keep this staging project separate from the existing Firebase marketing project unless reviewed.
-2. In terminal inside this directory, sign in and select the new staging project:
-
-   ```sh
-   firebase login
-   firebase use --add
-   cd functions && npm install && cd ..
-   ```
-
-3. Create your first staff user in Firebase Console → Authentication → Users. Copy the **UID**. In Firestore, manually create document `staff/<UID>` with fields `name` (string), `role` (string) = `owner`, `active` (boolean) = `true`. **Never enable client writes to staff records.** Create individual accounts for each employee and corresponding active staff documents.
-4. **Before deploying Functions**, set secrets in the Firebase CLI, in the same project. The notification function declares these secrets at deploy time (configure even for testing; use test credentials where appropriate):
-
-   ```sh
-   firebase functions:secrets:set RF_SMTP_HOST
-   firebase functions:secrets:set RF_SMTP_PORT
-   firebase functions:secrets:set RF_SMTP_USER
-   firebase functions:secrets:set RF_SMTP_PASS
-   firebase functions:secrets:set RF_SMTP_FROM
-   firebase functions:secrets:set RF_VIBER_CHANNEL_TOKEN
-   firebase functions:secrets:set RF_VIBER_CHANNEL_SENDER_ID
-   firebase deploy --only firestore,functions,hosting
-   ```
-
-   SMTP provider must permit authenticated sending and authorize `RF_SMTP_FROM`. The Viber settings must be for your **existing Rocketfix Viber Channel**, with a sender ID allowed to post there. Never paste tokens into browser code, Firestore rules, screenshots or support chats.
-5. Use the new Firebase Hosting URL only for **staging**. Log in as owner; verify test editing-only, frame-only, mixed-service, commission and overpayment orders. Confirm Firebase order, earnings, audit and notification outbox all agree; verify both deliveries on a TEST channel/email. Test concurrency/duplicate POS ID and bad-password access.
-6. After testing, perform a controlled, reconciled migration from the existing Google Sheets POS. **Do not manually submit paid historic orders in the new system or send old-order notifications**. The included `tools/preview-legacy.js` only previews an exported `POS Ledger` CSV and NEVER imports or changes records.
-7. When a deliberate go-live date is chosen, freeze new edits in the old POS, reconcile final ledgers, switch staff to the new system, and retain the old Sheets read-only as an archive. Do not run both as live sources of truth without a designed migration bridge.
-
-## SMTP and Viber status behavior
-
-At successful new-order transaction commit, `notificationOutbox/<POS>_CUSTOMER` (if valid email) and `notificationOutbox/<POS>_VIBER` are created with `QUEUED`. Firestore events independently transition these to `SENDING` then `SENT`, `NOT_CONFIGURED`, or `REVIEW`. They are **not automatically retried**, because a timeout after a provider accepts a message can otherwise duplicate notifications. The POS UI can inspect these statuses by POS ID.
-
-## Commands for safe local code checks
+Requires Node 22, Java 21, and Firebase CLI. Cloud onboarding installs Node 22.23.4 and Firebase CLI 15.35.0 outside the checkout at `/workspace/rocketfix-toolchain`. Activate those tools:
 
 ```sh
-node --test tests/core.test.js
-node --check functions/index.js
-node --check public/app.js
+export PATH=/workspace/rocketfix-toolchain/node_modules/.bin:$PATH
+export npm_config_cache=/workspace/.npm-cache
+cd /workspace/Rocketfix360
+npm ci --ignore-scripts
+npm ci --prefix functions --ignore-scripts
+npm run audit:sources
+npm test
+npm run check
+npm run build
+npm run test:emulators
 ```
 
-## Pricing and financial accounting notes
+The Firebase CLI downloads its Firestore emulator from `storage.googleapis.com`. Keep TLS and the CLI's artifact checksum checks enabled. Emulator binaries are cached outside the checkout. CLI settings and generated logs use ignored `.runtime/` paths to preserve uploaded logs. No Firebase login is required. `tools/smoke-auth-hosting.cjs` can independently verify the Auth/Hosting subset under `firebase emulators:exec --only auth,hosting`.
 
-The calculation follows the provided Rocketfix scheme for prepaid (fully paid) orders:
-`subtotal = editing + framing + (₱200 × paid letters)`; `due = subtotal - discount + tip + shippingFee`; `excess = max(0, received - due)`. The **excess is not a tip**. Editing/framing allocations exclude tip and excess, while frame allocation includes frame shipping fee. This version **rejects underpayments**; partial payments require a separately designed payment-ledger workflow.
+For a CLI installed elsewhere, set `RF_FIREBASE_CLI` to its `firebase-tools/lib/bin/firebase.js` path. The npm command wrappers start the demo project explicitly.
 
-The source Rocketfix POS has strict frame order statuses and a non-trivial external product/shipping rate system; the new app's price inputs are intentionally not treated as an authoritative automated calculator.
+```sh
+npm run emulators
+```
 
-## Security note
+In another terminal seed local accounts (safe to repeat; existing memberships are preserved):
 
-The original uploaded Apps Script included a temporary `posRequireAuth_()` bypass; this Firebase code does **not** preserve that bypass. Every financial callable checks authenticated Firebase staff membership. Firestore client rules deny all direct reads/writes. For production, enable and test Firebase App Check, account MFA for admin roles, alerts/budgets, backups and least-privilege IAM. Manual staff provisioning is intentionally private to the Firebase Console.
+```sh
+GCLOUD_PROJECT=demo-rocketfix-360 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 node tools/seed-emulator.cjs
+```
+
+Hosting uses port 5050; Auth 9099; Firestore 8080; Functions 5001, all bound to loopback. Sign in with `owner@rocketfix.local` and the local fixture password `Rocketfix-Emulator-Only-2026!`. Other fixture accounts use role names `admin`, `sales`, `encoder`, `editor`, `production` with the same emulator-only password. These are test identities, never production accounts.
+
+Processes and data do not survive an emulator restart unless explicitly exported. Do not seed real customer data. In cloud tasks, use the existing isolated checkout; do not create a Git worktree unless requested.
+
+## Supported staging workflows
+
+- Authenticated active staff membership; owner-controlled membership updates for existing Auth emulator users. The role matrix remains provisional because the original employee permission dispatcher was not uploaded.
+- Atomic order save with unique POS/service reservations, stable request ID replay, optimistic version checks, immutable financial revision and audit snapshots, and stable employee earning keys.
+- Editing IDs, rush dates, assigned active editors, file URLs, linked frames, statuses; frame production statuses, mockup references and tracking numbers. Worker updates use versions and do not reprice payments.
+- Per-frame freight, standard frame prices visible in the uploaded browser reference, configurable custom-product formulas and LBC rates. Frame quoting/saving is disabled by default pending the legacy audit. For synthetic tests only, enable **synthetic staging price fixtures** in Pricing settings; all frame orders are marked `UNVERIFIED_FIXTURE`. These are not approved rates. Use **Calculate server quote** before saving fixtures. Unconfigured rates require configuration or an explicit confirmed per-frame shipping quotation. No rates are guessed. Price tampering and stale calculated prices fail the server save.
+- Discount, shipping, tips and Excess accounting matched against uploaded Apps Script allocation functions. Underpayments are rejected. Excess is separate from tips and sales. Operational roles receive allowlisted projections without financial fields.
+- At-order letters at ₱200 with ₱50 commission; immutable paid commission recipient. Late letters use a separate atomic payment/commission/outbox record, reject shipped or closed frames, and replay without charging the original ledger again.
+- Date-range sales and employee earnings reports. Sales excludes tips and Excess; framing includes freight and at-order letters; late-letter sales are reported separately. The dashboard uses the Manila payment date; normal order lists remain bounded recent views.
+- Immutable email/Viber notification snapshots, transactional delivery claim and attempt log. Delivery is **SIMULATED**, never reported as actual provider delivery. Ambiguous outcomes remain REVIEW; only confirmed non-delivery permits an admin retry, with backoff and a three-attempt cap. Real SMTP/Viber adapters are wired behind a code-level OFF policy; no credentials are read and no external requests occur in normal operation. See [secure bindings and delivery semantics](docs/NOTIFICATIONS.md).
+
+`npm run test:integration` requires already running demo emulators; `npm run test:emulators` starts an isolated suite and shuts it down afterward. The integration tests use only local fixtures and fail if local demo environment variables are absent.
+
+`node tools/browser-smoke.cjs` checks compiled login/form rendering against an existing local server. It uses Chromium and Playwright installed by cloud setup; it does not substitute for authenticated integration tests.
+
+## Remaining inputs
+
+The user identified the missing legacy pricing, device-access, emailer, transaction-mailer and Viber files in the original archive; they await committing under `reference/legacy/` and an offline audit. Approved shipping rates still require an offline configuration export, and the complete Tracking backend remains unavailable. Loyalty/refund rules and historical exports also remain absent. The browser contains some formulas, but is not sufficient to prove parity with these missing server systems. Supply their offline source/configuration to complete the audit. Do not connect this build to the live POS to discover or infer rules.
+
+## Legacy parity continuation
+
+[Legacy intake and exact missing inputs](docs/LEGACY_MIGRATION.md) track FramePricing.gs, DeviceAccess.gs, POS_Emailer.gs, TransactionMailer.gs and ViberChannel.gs under `reference/legacy/`. `npm run audit:legacy` fails until those offline sources are present and reviewed. The original 17 tests remain unchanged. Production-intended saves are rejected and stored orders are server-marked staging / ineligible for production.
+
+If the Firestore artifact is blocked, run `npm run validate:staging` for interim validation and follow [the verified-artifact alternative](docs/VALIDATION.md). The interim suite is not proof of Firestore rules or callable integration.
