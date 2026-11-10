@@ -9,6 +9,8 @@ test('original POS styles are retained while Firebase login replaces obsolete de
  const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")),originalStyles.filter(s=>!s.includes("Rocketfix secure workstation")));
  for(const match of source.matchAll(/\bid="([^"]+)"/g)){if(/^rfDevice|^rfCompanyPinInput$/.test(match[1]))continue;assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');}
  assert.doesNotMatch(output,/rfDevice|rfCompanyPin|rfStaffSign|RF_STAFF|google\.script|Connecting securely/);
+ assert.match(output,/src="\/app\.bundle\.js\?v=[a-f0-9]{16}"/);
+ assert.ok(JSON.parse(fs.readFileSync('firebase.json','utf8')).hosting.headers.some(rule=>rule.source==='**'&&rule.headers.some(header=>header.key==='Cache-Control'&&header.value==='no-store')));
  assert.ok(output.includes('id="firebaseLoginForm"'));assert.ok(output.includes('id="employeeBadge"'));
  for(const match of output.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
  assert.ok(!output.includes('script.google.com/macros'));assert.ok(!output.includes('UNVERIFIED_FIXTURE'));

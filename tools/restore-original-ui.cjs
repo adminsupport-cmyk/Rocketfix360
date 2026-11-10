@@ -4,6 +4,9 @@
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 function generate(){
+ const version=require('node:crypto').createHash('sha256');
+ for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs'])version.update(fs.readFileSync(path.join(root,file)));
+ const assetVersion=version.digest('hex').slice(0,16);
  let html=fs.readFileSync(path.join(root,'reference/Original_Index.html'),'utf8');
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
  if(start<0||end<start)throw Error('Original authentication boundary changed');
@@ -64,7 +67,7 @@ function setPOSAccess(profile){
   .replaceAll('rfDeviceReady','posAuthorized').replaceAll('rfDeviceStartApp','startPOS')
   .replaceAll('rfDeviceUser','employeeBadge').replaceAll('rfDeviceInit();','');
  html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
- return html.replace(/[ \t]+$/gm,'');
+ return html.replace('src="/app.bundle.js"','src="/app.bundle.js?v='+assetVersion+'"').replace(/[ \t]+$/gm,'');
 }
 if(require.main===module)fs.writeFileSync(path.join(root,'public/index.html'),generate());
 module.exports={generate};

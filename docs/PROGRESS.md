@@ -1,3 +1,9 @@
+# Prevent stale login bundles — November 10, 2026
+
+User reported a bindWorkflows null-element startup error. Read-only live inspection found no bindWorkflows in current deployed HTML/JS; both files were served with max-age=3600. Versioned the client script URL from source fingerprints and configured staging Hosting assets as no-store to prevent stale HTML/JavaScript pairings. All 42 tests and checks/build pass. Live browser validation loaded the versioned bundle despite an injected obsolete unversioned response, observed no startup errors, and verified editable login fields. No credentials submitted to staging; no backend changes.
+
+---
+
 # Firebase-only authentication — November 10, 2026
 
 Removed the migrated device gate, device-token arguments, old login/session helpers, approval/loading controls and Google Apps Script-shaped runtime transport. The standalone Firebase email/password form is controlled solely by Firebase Auth. Its auth-state observer calls the existing backend myAccess check against active staff membership before starting POS business data loads. Missing, inactive or invalid-role membership shows Access denied. A retry for the same Firebase account rechecks current staff membership. The original POS business layout and financial protections remain intact.
