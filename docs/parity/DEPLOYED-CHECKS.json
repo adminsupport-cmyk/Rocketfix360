@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T06:35:19.772Z",
+  "checkedAt": "2026-11-10T07:38:25.272Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -88,16 +88,31 @@
       "name": "saveLateLetter",
       "preflight": 204,
       "unauthenticated": 401
+    },
+    {
+      "name": "editOrderRecord",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "integrationStatus",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "retrySheetsMirror",
+      "preflight": 204,
+      "unauthenticated": 401
     }
   ],
   "assets": [
     {
       "name": "index.html",
-      "sha256": "bf1a1d872d24a48cb9ca0c686841a96953f40c82fedaec4f3bdc5ff32566a5c7"
+      "sha256": "030d185112162ace86f28446f0d97f0d1f4ff48812195220b978d10dbdbad15b"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "7fb78478e6e607781e0bd7998fdd4dae2aadc2104cc461d11f935e530f9ebd21"
+      "sha256": "bfe3780b4493f4dc710639402c89de8dcd48d68233b39b64d52ec23b6673c7b7"
     }
   ],
   "realNotificationsEnabled": false,

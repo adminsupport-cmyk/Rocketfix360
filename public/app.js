@@ -3,6 +3,7 @@ import {getAuth,connectAuthEmulator,onAuthStateChanged,signInWithEmailAndPasswor
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 import {firebaseConfig,functionsRegion,useEmulators} from './config.js';
 import adapter from './legacy-adapter.cjs';
+import {bindModernPOS} from './modern.js';
 const app=initializeApp(firebaseConfig),auth=getAuth(app),functions=getFunctions(app,functionsRegion);
 if(useEmulators){
  if(!['localhost','127.0.0.1'].includes(location.hostname)||firebaseConfig.projectId!=='demo-rocketfix-360')throw Error('Sample orders require the local demo emulators');
@@ -29,7 +30,7 @@ async function dispatch(method,args){
   if(!requests.has(record))requests.set(record,crypto.randomUUID());
   pending.set(record.posId,requests.get(record));
   const result=await invoke('saveOrder',{order:adapter.toFirebase(record),expectedVersion:record.updatedAt||null,requestId:requests.get(record)});
-  const {order}=await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)});pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
+  const order=result.record||(await invoke('getOrder',{posId:result.posId,requestId:requests.get(record)})).order;pending.delete(record.posId);return {ok:true,record:adapter.fromFirebase(order)};
  }
  case 'delete':await invoke('voidOrder',{posId:values[0],expectedVersion:values[1],reason:'Confirmed by employee through original POS deletion workflow'});return {ok:true,deleted:true,posId:values[0]};
  case 'tips':return ['Select','Joyce','Renz','Joy','Lerni']; // Exact source fallback; edited workbook validation export remains blocked.
@@ -67,6 +68,12 @@ async function dispatch(method,args){
 }
 window.posAPI={run:adapter.runner(dispatch)};
 window.firebasePOS={isDemo:useEmulators};
+bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
+ save:record=>dispatch('execute',['save',[record,null]]),status:posId=>dispatch('execute',['status',[posId]]),
+ acceptReceipt:record=>window.acceptCommittedReceipt(record),editPayment:order=>window.loadPaymentCorrection(adapter.fromFirebase(order)),
+ notify:(message,error=false,id='')=>window.rfShowSubmitModal({title:error?'Action needed':id?'PAYMENT SAVED ✓':'Notice',message,error,id,sound:!!id&&!error}),
+ openTab:name=>{window.openTab(name);document.querySelector('nav [data-tab="'+name+'"]')?.dispatchEvent(new Event('click'));},refreshLegacy:()=>window.rfRefreshLive(true)
+});
 const login=document.getElementById('firebaseLogin'),form=document.getElementById('firebaseLoginForm'),button=document.getElementById('loginSubmit'),message=document.getElementById('loginError'),status=document.getElementById('loginStatus');
 let accessGeneration=0;
 function showLogin(error=''){

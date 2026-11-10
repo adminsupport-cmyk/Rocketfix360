@@ -5,19 +5,21 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 function generate(){
  const version=require('node:crypto').createHash('sha256');
- for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs'])version.update(fs.readFileSync(path.join(root,file)));
+ for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','public/modern.js'])version.update(fs.readFileSync(path.join(root,file)));
  const assetVersion=version.digest('hex').slice(0,16);
  let html=fs.readFileSync(path.join(root,'reference/Original_Index.html'),'utf8');
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
  if(start<0||end<start)throw Error('Original authentication boundary changed');
  const auth=`let posAuthorized=false;
+function loadPaymentCorrection(record){const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);editRecord(record.posId);}
+function acceptCommittedReceipt(record){const index=tx.findIndex(o=>o.posId===record.posId);if(index>=0)tx[index]=record;else tx.unshift(record);resetForm();renderReports();rfRefreshLive(true);}
 function setPOSAccess(profile){
  posAuthorized=!!profile;
  const label=document.getElementById('employeeBadge');label.hidden=!profile;
  if(!profile)return;
  label.textContent='Staff: '+profile.name;
  document.querySelector('nav [data-tab="settings"]').hidden=!['owner','admin'].includes(profile.role);
- startPOS();
+ startPOS();window.modernPOS?.authorized();
 }
 `;
  html=html.slice(0,start)+auth+html.slice(end);
@@ -31,6 +33,8 @@ function setPOSAccess(profile){
  html=html.replaceAll('Saving to Google Sheets','Saving remittance').replace('waiting list checks Google Sheets','waiting list checks the saved payment');
  html=html.replace('Viber Channel delivery is a separate scheduled step.','Email and Viber sending are disabled.');
  html=html.replace('The original Viber-connected project reports it automatically.','Email and Viber sending are disabled.');
+ html=html.replace('Viber reporting is handled by the original remittance project. Payment will be saved first, then queued for Viber; delivery is not yet confirmed.','External Viber delivery is disabled. Payment is saved independently.');
+ html=html.replace('Viber is waiting for the original sender. No new payment needed.','External Viber delivery is disabled. No new payment needed.');
  html=html.replace('stored in your account’s live Drive folder.','available after the staging Drive folder is connected.');
  html=html.replace('Stored in your account’s live Drive folder.','Drive upload is not connected yet.');
  html=html.replace('It will upload to Google Drive when you save.','Drive upload is not connected yet; no payment will be saved with this attachment.');
@@ -67,6 +71,22 @@ function setPOSAccess(profile){
   .replaceAll('rfDeviceReady','posAuthorized').replaceAll('rfDeviceStartApp','startPOS')
   .replaceAll('rfDeviceUser','employeeBadge').replaceAll('rfDeviceInit();','');
  html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
+ html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/modern.css'),'utf8')+'</style></head>');
+ html=html.replace(/<nav>[\s\S]*?<\/nav>/,'<nav><button class="active" data-tab="dashboard">Dashboard</button><button data-tab="new">Admin POS</button><button data-tab="editingDatabase">Editing Database</button><button data-tab="frameDatabase">Frame Database</button><button data-tab="history">Remittances</button><button data-tab="settings">Settings</button></nav>');
+ html=html.replace('<section class="tab active" id="new">','<section class="tab" id="new">');
+ html=html.replace('</main>',fs.readFileSync(path.join(root,'tools/templates/modern.html'),'utf8')+'</main>');
+ html=html.replace(/<div id="rfQueueDock"[\s\S]*?<div id="rfSubmitOverlay"/,'<div id="rfSubmitOverlay"');
+ html=html.replaceAll('Save Remittance','Submit Remittance').replace('Your remittance will upload while you prepare the next order.','Payment confirmation waits only for the Firebase commit.');
+ const queueStart=html.indexOf(' if(rfJobs.some(j=>j.record.posId===record.posId))');
+ const queueEnd=html.indexOf('function resetForm()',queueStart);
+ if(queueStart<0||queueEnd<0)throw Error('Remittance submit boundary changed');
+ html=html.slice(0,queueStart)+" return window.modernPOS.submit(record,file);\n}\n"+html.slice(queueEnd);
+ // Late-letter submission uses the same direct Firebase result, never the old sheet queue.
+ const lateStart=html.indexOf('function rfLateSave(){'),lateEnd=html.indexOf('function rfLateRepair(){',lateStart);
+ html=html.slice(0,lateStart)+"function rfLateSave(){return window.modernPOS.submitLetter(rfLateOrder); }\n"+html.slice(lateEnd);
+ html=html.replace('function resetForm(){',"function resetForm(){window.modernPOS?.resetSubmission();");
+ html=html.replace('Transaction History</h1>','Remittances</h1>');
+
  return html.replace('src="/app.bundle.js"','src="/app.bundle.js?v='+assetVersion+'"').replace(/[ \t]+$/gm,'');
 }
 if(require.main===module)fs.writeFileSync(path.join(root,'public/index.html'),generate());

@@ -124,6 +124,26 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  for(let i=0;i<50;i++){n=(await ref.get()).data();if(n.status==='SIMULATED')break;await new Promise(r=>setTimeout(r,200));}
  assert.equal(n.status,'SIMULATED');assert.match(n.preview.text,/Excess: ₱626.00/);assert.equal(n.attempts,1);
  });
+ await t.test('structured edits are versioned, audited, atomic with mirroring and never repeat notifications',async()=>{
+ const old=(await call('getOrder',{posId:base.posId})).order;
+ const notices=(await db.collection('notificationOutbox').where('posId','==',base.posId).get()).size;
+ await assert.rejects(call('editOrderRecord',{posId:base.posId,expectedVersion:old.version,patch:{received:1}}),/Unsupported record field/);
+ const changes={first:'Database Corrected',shipping:{receiverName:'Database Receiver'},items:[{itemKey:old.items[0].itemKey,status:'Finalizing',fileUrl:'https://drive.google.com/file/d/test/view'}]};
+ const result=await call('editOrderRecord',{posId:base.posId,expectedVersion:old.version,patch:changes});assert.equal(result.version,old.version+1);assert.equal(result.order.first,'Database Corrected');
+ for(const key of ['received','due','editPaid','framePaid','tip','excess'])assert.equal(result.order[key],old[key]);
+ assert.ok((await db.doc('orders/'+base.posId+'/revisions/'+result.version).get()).exists);assert.ok((await db.doc('integrationOutbox/'+base.posId+'_SHEETS_'+result.version).get()).exists);
+ assert.equal((await db.collection('notificationOutbox').where('posId','==',base.posId).get()).size,notices);
+ await assert.rejects(call('editOrderRecord',{posId:base.posId,expectedVersion:old.version,patch:{phone:'stale'}}),/changed elsewhere/);
+ await assert.rejects(call('editOrderRecord',{posId:base.posId,expectedVersion:result.version,patch:{first:'Forbidden'}},'production'),/financial access/);
+ const concurrent=await Promise.allSettled(['one','two'].map(remarks=>call('editOrderRecord',{posId:base.posId,expectedVersion:result.version,patch:{remarks}})));assert.equal(concurrent.filter(r=>r.status==='fulfilled').length,1);
+ });
+ await t.test('integration visibility and retries are owner/admin only; unverified test mirrors never send',async()=>{
+ await assert.rejects(call('integrationStatus',{},'sales'),{code:'PERMISSION_DENIED'});const data=await call('integrationStatus');assert.equal(data.sheetsEnabled,false);assert.equal(data.viberEnabled,false);assert.ok(data.sheets.length>0);assert.ok(!JSON.stringify(data).includes('snapshot'));
+ const event=(await db.collection('integrationOutbox').limit(1).get()).docs[0];
+ await require('../../functions/sheets-mirror').processMirror(db,event.ref,{upsert:async()=>assert.fail('No external test workbook authorized')});assert.equal((await event.ref.get()).data().status,'BLOCKED');
+ await assert.rejects(call('retrySheetsMirror',{eventId:event.id}),/confirmed non-write/);
+ const dash=await call('dashboard');assert.ok(dash.pendingEditing>=0&&dash.pendingFrames>=0);assert.equal(dash.salesToday,dash.editingToday+dash.framingToday);
+ });
  await t.test('hosting serves compiled staging application',async()=>{
  const r=await fetch('http://127.0.0.1:5050');assert.ok(r.ok);assert.match(await r.text(),/app.bundle.js/);const js=await fetch('http://127.0.0.1:5050/app.bundle.js');assert.ok(js.ok);assert.match(await js.text(),/connectAuthEmulator/);
  });

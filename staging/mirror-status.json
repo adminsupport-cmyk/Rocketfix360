@@ -1,0 +1,12 @@
+{
+  "project": "rocketfix-360-staging",
+  "existingOutboxRuntime": "855901392227-compute@developer.gserviceaccount.com",
+  "verifiedAt": "2026-11-10T07:05:07.338Z",
+  "masterTestWorkbookId": null,
+  "frameTestWorkbookId": null,
+  "editorAccessVerified": false,
+  "mirroringEnabled": false,
+  "mirrorRuntime": "855901392227-compute@developer.gserviceaccount.com",
+  "mirrorRuntimeVerified": true,
+  "mirrorRuntimeVerifiedAt": "2026-11-10T07:38:25.328Z"
+}

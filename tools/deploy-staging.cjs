@@ -9,6 +9,16 @@ function validateTarget(config,confirmation){
  if(require('../functions/notification-policy').externalSendingAuthorized!==false)throw Error('External notifications must remain disabled');
  return id;
 }
+function assertFunctionInventory(functions,source,project){
+ if(!Array.isArray(functions))throw Error('Staging function inventory is unavailable');
+ const names=[...source.matchAll(/^exports\.(\w+)=/gm)].map(m=>m[1]);
+ if(!names.length||functions.some(f=>f.project!==project||f.region!=='asia-southeast1'||f.platform!=='gcfv2'||!names.includes(f.id)))throw Error('Unrelated staging functions found; refusing forced deployment');
+ return names;
+}
+function isInvokerOnlyFailure(output,names){
+ const errors=String(output).split('\n').map(s=>s.trim()).filter(s=>s.startsWith('- Error '));
+ return errors.length>0&&errors.every(line=>{const match=line.match(/^- Error Failed to set invoker function (\w+) in region asia-southeast1$/);return !!match&&names.includes(match[1]);});
+}
 async function main(){
  const args=process.argv.slice(2),configPath=args[args.indexOf('--config')+1],confirmation=args[args.indexOf('--confirm-project')+1];
  if(!args.includes('--config')||!args.includes('--confirm-project'))throw Error('Usage: npm run deploy:staging -- --config staging/project.json --confirm-project YOUR_PROJECT-staging');
@@ -32,9 +42,22 @@ async function main(){
  run(process.execPath,[cli,'apps:list','WEB','--project',id,'--json']);
  run(process.execPath,[cli,'firestore:databases:get','rocketfix360database','--project',id,'--json']);
  run('npm',['ci','--prefix',path.join(out,'functions'),'--ignore-scripts','--no-audit','--no-fund']);
- run(process.execPath,[cli,'deploy','--config',file,'--project',id,'--only','firestore:rules,firestore:indexes,functions,hosting','--non-interactive']);
+ const inventory=spawnSync(process.execPath,[cli,'functions:list','--project',id,'--json'],{cwd:root,encoding:'utf8'});
+ if(inventory.status!==0)throw Error('Cannot verify staging function inventory');
+ const names=assertFunctionInventory(JSON.parse(inventory.stdout).result,fs.readFileSync(path.join(root,'functions/index.js'),'utf8'),id);
+ const only=['firestore:rules','firestore:indexes',...names.map(name=>'functions:'+name),'hosting'].join(',');
+ // --force explicitly approves the tested event retry policy. Named targets and
+ // the inventory guard prevent deleting any unrelated Cloud Function.
+ const deployment=spawnSync(process.execPath,[cli,'deploy','--config',file,'--project',id,'--only',only,'--non-interactive','--force'],{cwd:root,encoding:'utf8'});
+ process.stdout.write(deployment.stdout||'');process.stderr.write(deployment.stderr||'');
+ if(deployment.error)throw deployment.error;
+ if(deployment.status!==0&&!isInvokerOnlyFailure((deployment.stdout||'')+'\n'+(deployment.stderr||''),names))throw Error('Staging code deployment failed; stopped before invocation changes');
+ // The Firebase CLI always attempts allUsers for newly created onCall services.
+ // Only an IAM-only failure may use the already-approved supported Cloud Run
+ // option; the helper verifies active callable inventory, policy and private workers.
  run(process.execPath,[path.join(root,'tools/callable-invokers.cjs'),'--project',id,'--apply']);
+ if(deployment.status!==0)run(process.execPath,[cli,'deploy','--config',file,'--project',id,'--only','firestore:rules,firestore:indexes,hosting','--non-interactive']);
  console.log('Staging URL: https://'+id+'.web.app');
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={validateTarget};
+module.exports={validateTarget,assertFunctionInventory,isInvokerOnlyFailure};

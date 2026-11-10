@@ -14,6 +14,10 @@ const {FieldValue,FieldPath,getFirestore}=require('firebase-admin/firestore');
 const {createHash}=require('node:crypto');
 const {validate,earnings,editStatuses,frameStatuses}=require('./core');
 const {quoteOrder,pricingConfig,letter,projection,date}=require('./workflows');
+const {applyRecordEdit}=require('./record-edits');
+const {dashboardTotals}=require('./dashboard');
+const {processMirror}=require('./sheets-mirror');
+const {createSheetsTransport}=require('./sheets-transport');
 admin.initializeApp();
 const db=getFirestore(admin.app(),'rocketfix360database'), REGION='asia-southeast1';
 const {assertStaging,assertStagingOrder,assertFinancialTesting}=require('./runtime');
@@ -104,6 +108,8 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const nextEarnings=earnings(target),oldEarnings=prior?earnings(prior):[];
   for(const e of oldEarnings.filter(x=>!nextEarnings.some(y=>y.key===x.key))){t.set(db.doc('earnings/'+encodeURIComponent(e.key)),{...e,status:'VOIDED',posId:id,updatedAt:currentTime});}
   for(const e of nextEarnings){t.set(db.doc('earnings/'+encodeURIComponent(e.key)),{...e,status:'ACTIVE',posId:id,paymentDate:target.paymentDate,updatedAt:currentTime});}
+  const mirrorRef=db.doc('integrationOutbox/'+id+'_SHEETS_'+target.version);
+  t.create(mirrorRef,{type:'SHEETS',posId:id,version:target.version,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
   const action=prior?'UPDATED':'CREATED';
   const audit=db.collection('audit').doc();t.set(audit,{posId:id,action,actor:actor.uid,at:currentTime,previousVersion:prior?.version||0,version:target.version,before:prior,after:target});
   // Outbox committed atomically with the order; delivery cannot roll back payment.
@@ -112,7 +118,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
    if(target.email&&target.email.toUpperCase()!=='N/A')t.create(db.doc('notificationOutbox/'+id+'_CUSTOMER'),{type:'CUSTOMER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
    t.create(db.doc('notificationOutbox/'+id+'_VIBER'),{type:'VIBER',posId:id,snapshot:target,status:'QUEUED',attempts:0,createdAt:currentTime});
   }
-  const outcome={posId:id,version:target.version,wasEdit:!!prior};
+  const outcome={posId:id,version:target.version,wasEdit:!!prior,record:target};
   t.create(replayRef,{fingerprint,outcome,createdAt:currentTime});return outcome;
  });
  return {ok:true,verified:'SYNCED',...outcome,notifications:'QUEUED_AFTER_COMMIT'};
@@ -158,11 +164,9 @@ exports.voidOrder=call(['owner','admin'],async ({posId,expectedVersion,reason},a
 });
 exports.dashboard=call(writer,async()=>{
  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'});
- const snaps=await db.collection('orders').where('paymentDate','==',today).get();
- const day=snaps.docs.map(s=>s.data()).filter(o=>!o.voidedAt&&o.status==='SYNCED');
- const late=await db.collection('lateLetters').where('paymentDate','==',today).get();
- const sum=key=>Math.round(day.reduce((a,o)=>a+o[key],0)*100)/100;
- return {today,ordersToday:day.length,salesToday:Math.round((sum('editPaid')+sum('framePaid')+late.size*200)*100)/100,editingToday:sum('editPaid'),framingToday:sum('framePaid')+late.size*200,tipsToday:sum('tip'),excessToday:sum('excess'),lateLettersToday:late.size*200,lastRecordsScanned:snaps.size,note:'Manila payment date; sales includes late letters and excludes tips and Excess.'};
+ const [orders,late]=await Promise.all([db.collection('orders').get(),db.collection('lateLetters').where('paymentDate','==',today).get()]);
+ const all=orders.docs.map(s=>s.data());
+ return {...dashboardTotals(all,late.docs.map(s=>s.data()),today),recent:all.filter(o=>!o.voidedAt).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,8)};
 });
 exports.notificationStatus=call(['owner','admin','sales'],async ({posId})=>{
  if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID');
@@ -172,7 +176,7 @@ exports.notificationStatus=call(['owner','admin','sales'],async ({posId})=>{
 // Provider adapters exist, but the version-controlled sending policy is OFF.
 // No credential lookup or provider connection occurs in the default simulator.
 const {deliver}=require('./notifications');
-exports.deliverOutbox=onDocumentCreated({database:'rocketfix360database',document:'notificationOutbox/{eventId}',region:REGION,retry:false,timeoutSeconds:60,secrets:providerSecrets},async event=>{
+exports.deliverOutbox=onDocumentCreated({database:'rocketfix360database',document:'notificationOutbox/{eventId}',region:REGION,retry:true,timeoutSeconds:60,secrets:providerSecrets},async event=>{
  staging();if(event.data)await deliver(db,event.data.ref,providerAdapter);
 });
 exports.retryNotification=call(['owner','admin'],async ({eventId})=>{
@@ -235,4 +239,40 @@ exports.saveLateLetter=call(writer,async (payload,actor)=>{
   t.create(db.doc('notificationOutbox/ADDON_'+id),{type:'LATE_VIBER',posId:o.posId,status:'QUEUED',attempts:0,createdAt:now(),snapshot:target});
   return {ok:true,alreadyRecorded:false,id,amount:200};
  });
+});
+
+exports.editOrderRecord=call(readers,async ({posId,expectedVersion,patch},actor)=>{
+ if(!/^\d{8}$/.test(String(posId)))throw Error('Invalid POS ID');
+ return db.runTransaction(async t=>{
+  const ref=db.doc('orders/'+posId),snap=await t.get(ref),prior=snap.data();
+  if(!prior||prior.voidedAt)throw Error('Order unavailable');
+  if(prior.version!==expectedVersion)throw Error('Order was changed elsewhere. Reload before editing.');
+  const next=applyRecordEdit(prior,patch,actor);
+  for(const item of next.items.filter(i=>i.assignedTo)){
+   const changed=prior.items.find(i=>i.itemKey===item.itemKey)?.assignedTo!==item.assignedTo;
+   if(changed){const staff=(await t.get(db.doc('staff/'+item.assignedTo))).data();if(staff?.active!==true||staff.role!=='editor')throw Error('Assigned employee must be an active editor');}
+  }
+  next.version=prior.version+1;next.updatedAt=now();next.updatedBy=actor.uid;
+  t.set(ref,next);t.create(db.doc('orders/'+posId+'/revisions/'+next.version),next);
+  t.create(db.collection('audit').doc(),{action:'RECORD_EDIT',posId,actor:actor.uid,at:now(),before:prior,after:next});
+  t.create(db.doc('integrationOutbox/'+posId+'_SHEETS_'+next.version),{type:'SHEETS',posId,version:next.version,snapshot:next,status:'QUEUED',attempts:0,createdAt:now()});
+  return {ok:true,version:next.version,order:publicOrder(next,actor.role,actor.uid)};
+ });
+});
+const sheetsTransport=createSheetsTransport(db);
+exports.mirrorOutbox=onDocumentCreated({database:'rocketfix360database',document:'integrationOutbox/{eventId}',region:REGION,serviceAccount:'855901392227-compute@developer.gserviceaccount.com',retry:true,timeoutSeconds:60},async event=>{
+ staging();if(event.data)await processMirror(db,event.data.ref,sheetsTransport);
+});
+exports.integrationStatus=call(['owner','admin'],async()=>{
+ const [mirrors,notifications]=await Promise.all([db.collection('integrationOutbox').orderBy('createdAt','desc').limit(100).get(),db.collection('notificationOutbox').orderBy('createdAt','desc').limit(100).get()]);
+ const project=(doc,type)=>{const n=doc.data();return {eventId:doc.id,type:type||n.type,posId:n.posId,status:n.status,attempts:n.attempts||0,errorCode:n.errorCode||'',updatedAt:n.updatedAt||n.createdAt,nextAttemptAt:n.nextAttemptAt||null};};
+ return {sheets:mirrors.docs.map(d=>project(d,'SHEETS')),notifications:notifications.docs.map(d=>project(d)),sheetsEnabled:require('./mirror-policy').testWritesAuthorized,viberEnabled:notificationPolicy.externalSendingAuthorized};
+});
+exports.retrySheetsMirror=call(['owner','admin'],async ({eventId},actor)=>{
+ if(!/^[0-9]{8}_SHEETS_[0-9]+$/.test(String(eventId)))throw Error('Invalid mirror event');
+ const ref=db.doc('integrationOutbox/'+eventId);
+ await db.runTransaction(async t=>{const n=(await t.get(ref)).data();if(!n||n.status!=='FAILED'||n.attempts>=3||!(Date.parse(n.nextAttemptAt)<=Date.now()))throw Error('Only confirmed non-write failures can retry after backoff; REVIEW requires reconciliation');
+  t.update(ref,{status:'QUEUED',updatedAt:now()});t.create(db.collection('audit').doc(),{action:'MIRROR_RETRY',actor:actor.uid,eventId,at:now()});
+ });
+ await processMirror(db,ref,sheetsTransport);return {ok:true};
 });

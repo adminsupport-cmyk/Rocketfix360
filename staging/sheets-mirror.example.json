@@ -1,0 +1,14 @@
+{
+  "firestoreDocument": "stagingConfig/sheetsMirror",
+  "environment": "test",
+  "schemaVerified": false,
+  "writerServiceAccount": "855901392227-compute@developer.gserviceaccount.com",
+  "workbookNames": {"master": "ROCKETFIX360 - MASTER TEST", "frames": "ROCKETFIX360 - FRAME ORDERS TEST"},
+  "workbooks": {"master": null, "frames": null},
+  "timeZones": {"master": "Asia/Hong_Kong", "frames": "Asia/Manila"},
+  "headerFingerprints": {},
+  "schemas": {},
+  "editorAccessVerified": false,
+  "testWritesVerified": false,
+  "liveMirroringAuthorized": false
+}

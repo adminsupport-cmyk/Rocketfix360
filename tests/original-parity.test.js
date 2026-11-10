@@ -6,8 +6,8 @@ const sample=()=>({posId:'12345678',paymentDate:'2026-11-10',first:'N/A',email:'
 test('original POS styles are retained while Firebase login replaces obsolete device controls',()=>{
  const source=fs.readFileSync('reference/Original_Index.html','utf8'),output=fs.readFileSync('public/index.html','utf8');
  assert.equal(output,require('../tools/restore-original-ui.cjs').generate());
- const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")),originalStyles.filter(s=>!s.includes("Rocketfix secure workstation")));
- for(const match of source.matchAll(/\bid="([^"]+)"/g)){if(/^rfDevice|^rfCompanyPinInput$/.test(match[1]))continue;assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');}
+ const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")&&!s.includes("Modern workspace")),originalStyles.filter(s=>!s.includes("Rocketfix secure workstation")));
+ for(const match of source.matchAll(/\bid="([^"]+)"/g)){if(/^rfDevice|^rfCompanyPinInput$|^rfQueue(Dock|Count|Items)$/.test(match[1]))continue;assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');}
  assert.doesNotMatch(output,/rfDevice|rfCompanyPin|rfStaffSign|RF_STAFF|google\.script|Connecting securely/);
  assert.match(output,/src="\/app\.bundle\.js\?v=[a-f0-9]{16}"/);
  assert.ok(JSON.parse(fs.readFileSync('firebase.json','utf8')).hosting.headers.some(rule=>rule.source==='**'&&rule.headers.some(header=>header.key==='Cache-Control'&&header.value==='no-store')));

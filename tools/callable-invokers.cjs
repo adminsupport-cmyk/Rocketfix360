@@ -22,6 +22,7 @@ async function configure(project,apply=false){
  }
  const functions=[];let pageToken;
  do{const response=(await gcf.get(`/projects/${project}/locations/${REGION}/functions`,{queryParams:{pageSize:'1000',...(pageToken?{pageToken}:{})}})).body;functions.push(...response.functions||[]);pageToken=response.nextPageToken;}while(pageToken);
+ if(functions.some(f=>f.state!=='ACTIVE'))throw Error('A staging function is not ACTIVE; refusing invocation changes');
  const actualNames=functions.filter(f=>f.labels?.['deployment-callable']==='true').map(f=>f.name.split('/').pop()).sort();
  if(JSON.stringify(actualNames)!==JSON.stringify(callableNames().sort()))throw Error('Deployed HTTPS callable inventory differs from audited source: '+JSON.stringify(actualNames));
  const outbox=functions.find(f=>f.name.endsWith('/deliverOutbox'));
@@ -29,6 +30,12 @@ async function configure(project,apply=false){
  const outboxService=(await run.get('/'+outbox.serviceConfig.service)).body;
  const outboxPolicy=(await run.get('/'+outbox.serviceConfig.service+':getIamPolicy')).body;
  if(outboxService.invokerIamDisabled===true||(outboxPolicy.bindings||[]).some(b=>b.role==='roles/run.invoker'&&b.members?.some(m=>['allUsers','allAuthenticatedUsers'].includes(m))))throw Error('deliverOutbox is not private; refusing callable changes');
+ const mirror=functions.find(f=>f.name.endsWith('/mirrorOutbox'));
+ if(mirror){
+  if(!mirror.eventTrigger||mirror.eventTrigger.eventFilters?.find(f=>f.attribute==='database')?.value!=='rocketfix360database')throw Error('Named-database mirror trigger missing');
+  const service=(await run.get('/'+mirror.serviceConfig.service)).body,iam=(await run.get('/'+mirror.serviceConfig.service+':getIamPolicy')).body;
+  if(service.invokerIamDisabled===true||(iam.bindings||[]).some(b=>b.role==='roles/run.invoker'&&b.members?.some(m=>['allUsers','allAuthenticatedUsers'].includes(m))))throw Error('mirrorOutbox must remain private');
+ }
  const rows=[];
  for(const name of callableNames()){
   const f=functions.find(f=>f.name.endsWith('/'+name));assertCallable(f,name);
@@ -48,7 +55,7 @@ async function configure(project,apply=false){
   rows.push({name,invokerIamDisabled:state.invokerIamDisabled===true});
   console.log(name+': invokerIamDisabled='+String(state.invokerIamDisabled===true));
  }
- const report={project,mode:'no-invoker-iam-check',effectivePolicies:policies,callables:rows,outbox:{name:'deliverOutbox',private:true,invokerIamDisabled:false,database:'rocketfix360database'},iamGrantsChanged:false};
+ const report={project,mode:'no-invoker-iam-check',effectivePolicies:policies,callables:rows,outbox:{name:'deliverOutbox',private:true,invokerIamDisabled:false,database:'rocketfix360database'},mirror:mirror?{private:true,invokerIamDisabled:false,database:'rocketfix360database',serviceAccount:mirror.serviceConfig.serviceAccountEmail}:null,iamGrantsChanged:false};
  console.log(JSON.stringify(report,null,2));
  if(rows.some(r=>!r.invokerIamDisabled))throw Error('Some callable Invoker IAM checks remain enabled');return report;
 }

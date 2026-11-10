@@ -14,5 +14,5 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   const res=await fetch(origin+'/'+name,{cache:'no-store'});assert.equal(res.status,200);const bytes=Buffer.from(await res.arrayBuffer()),local=fs.readFileSync(path.resolve(__dirname,'../.runtime/deploy/public',name));assert.equal(hash(bytes),hash(local),'Deployed '+name+' matches tested artifact');assets.push({name,sha256:hash(bytes)});
  }
  const report={checkedAt:new Date().toISOString(),project,database:'rocketfix360database',website:origin,callables:rows,assets,realNotificationsEnabled:false,financialWrites:'BLOCKED_OUTSIDE_LOCAL_DEMO',ownerDeployedAcceptance:'NOT_VERIFIED; no authorized browser session used',fullParity:false};
- fs.writeFileSync(path.resolve(__dirname,'../docs/parity/DEPLOYED-CHECKS.json'),JSON.stringify(report,null,2)+'\n');console.log('PASS: 17 deployed preflights/authentication checks; deployed HTML and bundle match tested staging artifact.');
+ fs.writeFileSync(path.resolve(__dirname,'../docs/parity/DEPLOYED-CHECKS.json'),JSON.stringify(report,null,2)+'\n');console.log('PASS: '+rows.length+' deployed preflights/authentication checks; deployed HTML and bundle match tested staging artifact.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
