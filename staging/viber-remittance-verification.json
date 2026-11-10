@@ -1,7 +1,7 @@
 {
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
-  "verifiedAt": "2026-11-10T08:18:01.745Z",
+  "verifiedAt": "2026-11-10T08:23:01.846Z",
   "posId": "83946792",
   "eventId": "83946792_VIBER",
   "orderSaved": true,
@@ -20,5 +20,9 @@
   ],
   "controlledVerification": true,
   "refreshAndEditVerified": true,
-  "automaticStagingEnabled": false
+  "automaticStagingConfigured": true,
+  "automaticStagingEnabled": true,
+  "deployedOwnerInterfaceVerified": true,
+  "deployedCodeCommit": "11bf60e9819c3a80bc249d43aeae772b72bb52e0",
+  "deployedCallableChecksPassed": 20
 }

@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T07:38:25.272Z",
+  "checkedAt": "2026-11-10T08:23:05.162Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -108,11 +108,11 @@
   "assets": [
     {
       "name": "index.html",
-      "sha256": "030d185112162ace86f28446f0d97f0d1f4ff48812195220b978d10dbdbad15b"
+      "sha256": "85fd8fb4f106b8ae6fb9c67fdf5772f33ca21edc4b19a799979bfcbe90210ee6"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "bfe3780b4493f4dc710639402c89de8dcd48d68233b39b64d52ec23b6673c7b7"
+      "sha256": "101d2e84f6957c7734edac1f0f1688513d203a1659648b2b5f5fd1dee11425a0"
     }
   ],
   "realNotificationsEnabled": false,
