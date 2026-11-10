@@ -1,0 +1,167 @@
+{
+  "project": "rocketfix-360-staging",
+  "effectivePolicy": {
+    "constraint": "constraints/iam.allowedPolicyMemberDomains",
+    "listPolicy": {
+      "allowedValues": [
+        "C02wcq3s1"
+      ]
+    }
+  },
+  "callables": [
+    {
+      "name": "myAccess",
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
+      "publicInvoker": false
+    },
+    {
+      "name": "listOrders",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "getOrder",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "saveOrder",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "updateItemStatus",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "voidOrder",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "dashboard",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "notificationStatus",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "retryNotification",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "getPricing",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "savePricing",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "quote",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "listStaff",
+      "preflightStatus": 204,
+      "allowOrigin": "https://rocketfix-360-staging.web.app",
+      "postStatus": 401,
+      "authStatus": "UNAUTHENTICATED",
+      "publicInvoker": false
+    },
+    {
+      "name": "setStaff",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "earningsReport",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "salesReport",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    },
+    {
+      "name": "saveLateLetter",
+      "preflightStatus": 403,
+      "allowOrigin": null,
+      "postStatus": 403,
+      "authStatus": "CLOUD_RUN_IAM_REJECTED",
+      "publicInvoker": false
+    }
+  ],
+  "outbox": {
+    "database": "rocketfix360database",
+    "publicInvoker": false
+  },
+  "externalSendingAuthorized": false,
+  "unitTests": {
+    "passed": 34,
+    "failed": 0
+  },
+  "emulatorTests": {
+    "passed": 18,
+    "failed": 0
+  },
+  "deployedCode": true,
+  "publicInvokerGrantSucceeded": false,
+  "organizationPolicyBypassed": false,
+  "authenticatedOwnerBrowserTest": "Blocked: required dashboard/listOrders/report preflights rejected by Cloud Run; available browser session remained on sign-in form",
+  "date": "2026-11-10"
+}

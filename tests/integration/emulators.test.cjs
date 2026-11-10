@@ -2,7 +2,9 @@
 const {test,before,after}=require('node:test'),assert=require('node:assert/strict');
 if(process.env.GCLOUD_PROJECT!=='demo-rocketfix-360'||process.env.FIRESTORE_EMULATOR_HOST!=='127.0.0.1:8080'||process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')throw Error('Integration tests require local demo emulators');
 const admin=require('../../functions/node_modules/firebase-admin');
-admin.initializeApp({projectId:'demo-rocketfix-360'});const db=admin.firestore();
+admin.initializeApp({projectId:'demo-rocketfix-360'});
+const functionsRequire=require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
+const db=functionsRequire('firebase-admin/firestore').getFirestore(admin.app(),'rocketfix360database');
 const {deliver}=require('../../functions/notifications');
 const tokens={};
 const endpoint='http://127.0.0.1:5001/demo-rocketfix-360/asia-southeast1/';
@@ -21,6 +23,15 @@ before(async()=>{
 });
 after(()=>admin.app().delete());
 test('staging workflow across Auth, callables, Firestore, rules and outbox',async t=>{
+ await t.test('all HTTPS callables allow staging preflight while retaining Firebase authentication',async()=>{
+ const names=require('../../tools/callable-invokers.cjs').callableNames();assert.ok(names.includes('myAccess'));assert.ok(!names.includes('deliverOutbox'));
+ for(const name of names){const headers={Origin:'https://rocketfix-360-staging.web.app','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization,content-type'};
+ const preflight=await fetch(endpoint+name,{method:'OPTIONS',headers});assert.equal(preflight.status,204,name);assert.equal(preflight.headers.get('access-control-allow-origin'),headers.Origin,name);
+ await assert.rejects(call(name,{},'none'),{code:'UNAUTHENTICATED'});}
+ });
+ await t.test('myAccess reads active Owner membership from the named database',async()=>{
+ assert.equal(db.databaseId,'rocketfix360database');const profile=await call('myAccess');assert.equal(profile.uid,'test-owner');assert.equal(profile.role,'owner');assert.equal(profile.name,'Test owner');
+ });
  await t.test('unauthenticated and inactive membership denied',async()=>{
  await assert.rejects(call('listOrders',{},'none'),{code:'UNAUTHENTICATED'});await assert.rejects(call('listOrders',{},'inactive'),{code:'PERMISSION_DENIED'});await assert.rejects(call('saveOrder',{order:base,requestId:'unauthorized-request'},'editor'),{code:'PERMISSION_DENIED'});
  });
@@ -49,7 +60,7 @@ test('staging workflow across Auth, callables, Firestore, rules and outbox',asyn
  }
  });
  await t.test('direct Firestore client reads and writes denied',async()=>{
- const url='http://127.0.0.1:8080/v1/projects/demo-rocketfix-360/databases/(default)/documents/orders/'+base.posId;
+ const url='http://127.0.0.1:8080/v1/projects/demo-rocketfix-360/databases/rocketfix360database/documents/orders/'+base.posId;
  for(const method of ['GET','PATCH']){const r=await fetch(url,{method,headers:{Authorization:'Bearer '+tokens.owner,'Content-Type':'application/json'},...(method==='PATCH'?{body:JSON.stringify({fields:{first:{stringValue:'Attack'}}})}:{})});assert.equal(r.status,403);}
  });
  await t.test('editor workflow, stale versions and cross-role status protection',async()=>{

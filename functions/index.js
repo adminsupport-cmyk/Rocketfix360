@@ -1,20 +1,21 @@
 'use strict';
 const {onCall,HttpsError}=require('firebase-functions/v2/https');
+const httpsInvocation=require('./callable-options').callableOptions();
 const {defineSecret}=require('firebase-functions/params');
 const notificationPolicy=require('./notification-policy');
 const {createProviderAdapter}=require('./provider-adapters');
 const credentialNames={smtpHost:'RF_SMTP_HOST',smtpPort:'RF_SMTP_PORT',smtpUser:'RF_SMTP_USER',smtpPass:'RF_SMTP_PASS',smtpFrom:'RF_SMTP_FROM',viberToken:'RF_VIBER_CHANNEL_TOKEN',viberSender:'RF_VIBER_CHANNEL_SENDER_ID'};
-const credentialBindings=Object.fromEntries(Object.entries(credentialNames).map(([key,name])=>[key,defineSecret(name)]));
+const credentialBindings=notificationPolicy.externalSendingAuthorized?Object.fromEntries(Object.entries(credentialNames).map(([key,name])=>[key,defineSecret(name)])):{};
 const providerSecrets=notificationPolicy.externalSendingAuthorized?Object.values(credentialBindings):[];
 const providerAdapter=createProviderAdapter({readCredentials:()=>Object.fromEntries(Object.entries(credentialBindings).map(([key,binding])=>[key,binding.value()]))});
 const {onDocumentCreated}=require('firebase-functions/v2/firestore');
 const admin=require('firebase-admin');
-const {FieldValue}=require('firebase-admin/firestore');
+const {FieldValue,getFirestore}=require('firebase-admin/firestore');
 const {createHash}=require('node:crypto');
 const {validate,earnings,editStatuses,frameStatuses}=require('./core');
 const {quoteOrder,pricingConfig,letter,projection,date}=require('./workflows');
 admin.initializeApp();
-const db=admin.firestore(), REGION='asia-southeast1';
+const db=getFirestore(admin.app(),'rocketfix360database'), REGION='asia-southeast1';
 const {assertStaging,assertStagingOrder}=require('./runtime');
 function staging(){try{assertStaging();}catch(e){throw new HttpsError('failed-precondition',e.message);}}
 const permitted=new Set(['owner','admin','sales','encoder','editor','production']);
@@ -28,9 +29,9 @@ async function requireRole(req,allowed){
  return {uid:req.auth.uid,role:s.role,name:String(s.name||req.auth.token.email||req.auth.uid)};
 }
 const writer=['owner','admin','sales'],readers=['owner','admin','sales','encoder','editor','production'];
-const call=(roles,handler,options={})=>onCall({region:REGION,timeoutSeconds:60,maxInstances:12,...options},async req=>{const actor=await requireRole(req,roles);try{return await handler(req.data||{},actor);}catch(e){return fail(e);}});
+const call=(roles,handler,options={})=>onCall({region:REGION,timeoutSeconds:60,maxInstances:12,...options,...httpsInvocation},async req=>{const actor=await requireRole(req,roles);try{return await handler(req.data||{},actor);}catch(e){return fail(e);}});
 const publicOrder=(o,role,uid)=>projection(o,{role,uid});
-exports.myAccess=onCall({region:REGION},async req=>{staging();if(!req.auth)throw new HttpsError('unauthenticated','Sign in');const d=await db.doc('staff/'+req.auth.uid).get();const s=d.data();return d.exists&&s.active===true&&permitted.has(s.role)?{name:s.name||'',role:s.role,uid:req.auth.uid}:{role:null,uid:req.auth.uid};});
+exports.myAccess=onCall({region:REGION,...httpsInvocation},async req=>{staging();if(!req.auth)throw new HttpsError('unauthenticated','Sign in');const d=await db.doc('staff/'+req.auth.uid).get();const s=d.data();return d.exists&&s.active===true&&permitted.has(s.role)?{name:s.name||'',role:s.role,uid:req.auth.uid}:{role:null,uid:req.auth.uid};});
 exports.listOrders=call(readers,async ({limit:lim=80},actor)=>{
  const size=Math.min(Math.max(Number(lim)||80,1),150);
  const s=await db.collection('orders').orderBy('createdAt','desc').limit(size).get();
@@ -154,7 +155,7 @@ exports.notificationStatus=call(['owner','admin','sales'],async ({posId})=>{
 // Provider adapters exist, but the version-controlled sending policy is OFF.
 // No credential lookup or provider connection occurs in the default simulator.
 const {deliver}=require('./notifications');
-exports.deliverOutbox=onDocumentCreated({document:'notificationOutbox/{eventId}',region:REGION,retry:false,timeoutSeconds:60,secrets:providerSecrets},async event=>{
+exports.deliverOutbox=onDocumentCreated({database:'rocketfix360database',document:'notificationOutbox/{eventId}',region:REGION,retry:false,timeoutSeconds:60,secrets:providerSecrets},async event=>{
  staging();if(event.data)await deliver(db,event.data.ref,providerAdapter);
 });
 exports.retryNotification=call(['owner','admin'],async ({eventId})=>{

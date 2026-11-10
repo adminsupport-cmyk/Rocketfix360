@@ -22,13 +22,17 @@ async function main(){
  const client=path.join(out,'public/config.js');fs.writeFileSync(client,'export const firebaseConfig='+JSON.stringify(config.firebaseConfig)+';\nexport const functionsRegion="asia-southeast1";\nexport const useEmulators=false;\n');
  await require('esbuild').build({entryPoints:[path.join(root,'public/app.js')],bundle:true,outfile:path.join(out,'public/app.bundle.js'),format:'esm',plugins:[{name:'staging-config',setup(build){build.onResolve({filter:/^\.\/config\.js$/},()=>({path:client}));}}]});
  const firebase=JSON.parse(fs.readFileSync(path.join(root,'firebase.json'),'utf8'));delete firebase.emulators;
- firebase.functions.source='functions';firebase.hosting.public='public';firebase.firestore.rules='firestore.rules';firebase.firestore.indexes='firestore.indexes.json';
+ firebase.functions.source='functions';firebase.hosting.public='public';
+ if(!Array.isArray(firebase.firestore)||firebase.firestore.length!==1||firebase.firestore[0].database!=='rocketfix360database')throw Error('Deployment must target only existing rocketfix360database');
+ firebase.firestore=[{database:'rocketfix360database',rules:'firestore.rules',indexes:'firestore.indexes.json'}];
  for(const name of ['firestore.rules','firestore.indexes.json'])fs.copyFileSync(path.join(root,name),path.join(out,name));
  const file=path.join(out,'firebase.json');fs.writeFileSync(file,JSON.stringify(firebase,null,2));
  if(args.includes('--prepare-only')){console.log('Prepared staging artifact for '+id+' at '+out);return;}
  run(process.execPath,[cli,'apps:list','WEB','--project',id,'--json']);
+ run(process.execPath,[cli,'firestore:databases:get','rocketfix360database','--project',id,'--json']);
  run('npm',['ci','--prefix',path.join(out,'functions'),'--ignore-scripts','--no-audit','--no-fund']);
  run(process.execPath,[cli,'deploy','--config',file,'--project',id,'--only','firestore:rules,firestore:indexes,functions,hosting','--non-interactive']);
+ run(process.execPath,[path.join(root,'tools/callable-invokers.cjs'),'--project',id,'--apply']);
  console.log('Staging URL: https://'+id+'.web.app');
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});

@@ -1,3 +1,15 @@
+# Named database and callable CORS deployment — November 10, 2026
+
+Deployed code/rules/indexes/Hosting only to `rocketfix-360-staging`, using existing `rocketfix360database`; no database was created. All backend reads, writes, Owner staff membership and deliverOutbox trigger explicitly target that database. HTTPS wrappers and standalone myAccess now declare public invocation with staging-origin CORS; Firebase Auth, roles, pricing, transaction replay and deny-all client rules remain intact. Disabled notifications no longer declare unused provider secrets. deliverOutbox remains private and real sending stays off.
+
+Tests: 34 unit tests and 18 emulator test records pass, including all-callable staging OPTIONS and unauthenticated rejection; syntax/build pass. Deployed metadata, named rules, active Owner staff profile and hosting configuration were verified. Live preflights succeed (204 with exact staging origin) for myAccess/listStaff; the other 15 callables, including dashboard/listOrders/salesReport, remain blocked by Cloud Run 403 before the handler. A staging-only additive public Invoker update was attempted, preserving existing bindings and excluding deliverOutbox; Google rejected the first grant. No policy/IAM-check bypass was attempted.
+
+**Exact blocker:** effective `constraints/iam.allowedPolicyMemberDomains` permits only customer `C02wcq3s1`. IAM rejects allUsers with `400 FAILED_PRECONDITION: One or more users named in the policy do not belong to a permitted customer, perhaps due to an organization policy.` Organization-admin authorization/policy change is required before the requested public Invoker bindings can be applied. Code deployment succeeded; overall deployment command correctly exits failure for the incomplete IAM step. Owner dashboard and report browser verification remain blocked. See [LIVE_STAGING_CHECKS.json](LIVE_STAGING_CHECKS.json) for actual results for all 17 callables.
+
+After an organization admin permits the requested public callable access for this project, rerun `node tools/callable-invokers.cjs --project rocketfix-360-staging --apply`, then repeat live preflight/Owner browser validation. This is not permission to bypass organization policy, disable IAM checks, change credentials/roles or make deliverOutbox public. Main, `rocketfix-360` and live Sheets were untouched.
+
+---
+
 ## Confirmed staging connection — November 10, 2026
 
 Created ignored `staging/project.json` from the supplied web configuration for `rocketfix-360-staging`. Prepared `.runtime/deploy` with matching browser config and backend allowlist; verified `rocketfix-360` is rejected and real sending remains disabled. Unit tests 34/34, emulator suite 16/16, syntax and build pass. Fixed esbuild staging artifact generation to use its asynchronous plugin API; added `--prepare-only` for offline deployment review. No remote Firebase deployment occurred: the staging-only app-access check reports expired Firebase CLI credentials. Reauthenticate, then run `npm run deploy:staging -- --config staging/project.json --confirm-project rocketfix-360-staging`. No production project or Sheets data was modified.
