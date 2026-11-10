@@ -7,7 +7,7 @@ function validateFixtureOrder(order,allowedEmails=[]){
  if(!/^(TEST|SAMPLE)(?:\s|$)/i.test(String(order.first||'').trim()))throw Error('Fictional customer names must begin with TEST or SAMPLE');
  const email=String(order.email||'').trim().toLowerCase();
  if(email!=='n/a'&&!email.endsWith('.invalid')&&!allowedEmails.map(x=>x.toLowerCase()).includes(email))throw Error('Use N/A, a fictional .invalid email, or an explicitly approved test inbox. Real customer emails are blocked.');
- if(order.proofUrl)throw Error('Real payment proofs are not accepted for fictional test orders');
+ if(order.proofUrl&&!order.proofUploadId)throw Error('Real payment proofs are not accepted for fictional test orders');
  return true;
 }
 function realEditingContext(order){

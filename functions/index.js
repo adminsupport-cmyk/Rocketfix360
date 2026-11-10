@@ -72,6 +72,15 @@ exports.getOrder=call(readers,async ({posId,frameId,requestId},actor)=>{
  }
  return {order:publicOrder(o,actor.role,actor.uid)};
 });
+const driveProofs=require('./drive-proofs').createDriveProofs(db);
+exports.proofStorageSettings=call(['owner','admin'],()=>driveProofs.settings());
+exports.testProofStorage=call(['owner','admin'],input=>driveProofs.test(input));
+exports.saveProofStorage=call(['owner'],(input,actor)=>driveProofs.save(input,actor));
+exports.startProofUpload=call(writer,(input,actor)=>driveProofs.start(input,actor));
+exports.resumeProofUpload=call(writer,(input,actor)=>driveProofs.resume(input,actor));
+exports.uploadProofChunk=call(writer,(input,actor)=>driveProofs.chunk(input,actor));
+exports.listProofUploads=call(['owner','admin'],()=>driveProofs.list());
+exports.cleanupProofUpload=call(['owner'],(input,actor)=>driveProofs.cleanup(input,actor));
 exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
  assertStagingOrder(order);
  if(!/^[a-zA-Z0-9_-]{16,100}$/.test(String(requestId||'')))throw Error('A stable request ID is required');
@@ -88,6 +97,7 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const test=paymentContext(order,cfg.data()||{},process.env,notificationPolicy.allowedTestEmails);
   const clean=validate(quoteOrder(order,test.config,order.stagingTest!==true));
   const priorSnap=await t.get(doc),prior=priorSnap.exists?priorSnap.data():null;
+  const proof=await require('./drive-proofs').proofForCommit(t,db,order,prior,actor);
   if(prior && !expectedVersion)throw Error('POS ID exists. Open it in history to edit; never resubmit a payment.');
   if(!prior && expectedVersion)throw Error('Order was not found; refresh without creating duplicate IDs');
   if(prior){
@@ -109,8 +119,9 @@ exports.saveOrder=call(writer,async ({order,expectedVersion,requestId},actor)=>{
   const keys=newItems.map(it=>db.doc('orderKeys/'+encodeURIComponent(it.kind+'|'+it.existingId)));
   const keySnaps=await Promise.all(keys.map(k=>t.get(k)));
   keySnaps.forEach((s,i)=>{if(s.exists && s.data().posId!==id)throw Error('Order ID already used: '+newItems[i].existingId);});
-  const target={...clean,stagingTest:test.stagingTest,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:test.stagingTest?'FICTIONAL TEST ORDER':null,paymentMode:test.paymentMode||'FICTIONAL_TEST',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
+  const target={...clean,...proof.fields,stagingTest:test.stagingTest,fixtureVersion:test.fixtureVersion,fixtureAcknowledgement:test.stagingTest?'FICTIONAL TEST ORDER':null,paymentMode:test.paymentMode||'FICTIONAL_TEST',environment:'staging',productionEligible:false,createdAt:prior?.createdAt||currentTime,updatedAt:currentTime,createdBy:prior?.createdBy||actor.uid,recordedByName:prior?.recordedByName||actor.name,updatedBy:actor.uid,version:(prior?.version||0)+1,status:'SYNCED',source:'FIREBASE',voidedAt:null};
   t.set(doc,target);
+  if(proof.ref)t.update(proof.ref,{state:'ATTACHED',attachedAt:currentTime,attachedVersion:target.version,updatedAt:currentTime});
   t.create(db.doc('orders/'+id+'/revisions/'+target.version),{...target});
   keys.forEach((key,i)=>t.set(key,{posId:id,itemKey:newItems[i].itemKey,kind:newItems[i].kind,orderId:newItems[i].existingId,createdAt:currentTime}));
   // Earnings docs have stable keys. No duplicate tips or letter commissions.

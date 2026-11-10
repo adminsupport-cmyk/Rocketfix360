@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 function generate(){
  const version=require('node:crypto').createHash('sha256');
- for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','tools/templates/settings.html','public/workspace.js','public/modern.js'])version.update(fs.readFileSync(path.join(root,file)));
+ for(const file of ['public/app.js','public/legacy-adapter.cjs','public/config.js','package-lock.json','reference/Original_Index.html','tools/templates/login.html','tools/templates/login.css','tools/restore-original-ui.cjs','tools/templates/modern.html','tools/templates/modern.css','tools/templates/settings.html','public/workspace.js','public/modern.js','public/proofs.js'])version.update(fs.readFileSync(path.join(root,file)));
  const assetVersion=version.digest('hex').slice(0,16);
  let html=fs.readFileSync(path.join(root,'reference/Original_Index.html'),'utf8');
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
@@ -38,8 +38,8 @@ function setPOSAccess(profile){
  html=html.replace('Viber reporting is handled by the original remittance project. Payment will be saved first, then queued for Viber; delivery is not yet confirmed.','External Viber delivery is disabled. Payment is saved independently.');
  html=html.replace('Viber is waiting for the original sender. No new payment needed.','External Viber delivery is disabled. No new payment needed.');
  html=html.replace('stored in your account’s live Drive folder.','available after the staging Drive folder is connected.');
- html=html.replace('Stored in your account’s live Drive folder.','Drive upload is not connected yet.');
- html=html.replace('It will upload to Google Drive when you save.','Drive upload is not connected yet; no payment will be saved with this attachment.');
+ html=html.replace('Stored in your account’s live Drive folder.','Private Google Drive upload; up to 25 MB.');
+ html=html.replace('It will upload to Google Drive when you save.','Upload will be verified in Google Drive before saving.');
  html=html.replace('.withFailureHandler(err=>rfHandleAmbiguousSave(job,err))',`.withFailureHandler(err=>['functions/unavailable','functions/deadline-exceeded','functions/internal'].includes(err.code)?rfHandleAmbiguousSave(job,err):rfFailJob(job,err))`);
  html=html.replace("if(state==='SENT'||state==='ALREADY_RECORDED'){","if(state==='DISABLED'||state==='SIMULATED'||state==='SENT'||state==='ALREADY_RECORDED'){");
  html=html.replace("const viberText=state==='SENT'?'Viber report SENT.':","const viberText=['DISABLED','SIMULATED'].includes(state)?'Email and Viber sending are disabled.':state==='SENT'?'Viber report SENT.':");

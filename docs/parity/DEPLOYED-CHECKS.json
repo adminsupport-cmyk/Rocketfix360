@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T14:48:51.140Z",
+  "checkedAt": "2026-11-10T17:25:17.508Z",
   "project": "rocketfix-360-staging",
   "database": "rocketfix360database",
   "website": "https://rocketfix-360-staging.web.app",
@@ -16,6 +16,46 @@
     },
     {
       "name": "getOrder",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "proofStorageSettings",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "testProofStorage",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "saveProofStorage",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "startProofUpload",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "resumeProofUpload",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "uploadProofChunk",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "listProofUploads",
+      "preflight": 204,
+      "unauthenticated": 401
+    },
+    {
+      "name": "cleanupProofUpload",
       "preflight": 204,
       "unauthenticated": 401
     },
@@ -128,11 +168,11 @@
   "assets": [
     {
       "name": "index.html",
-      "sha256": "f675652f59fa472d9042123cc6fb5222b9b39ee23daf2275c766e86ea9a220a3"
+      "sha256": "3bf8f946e7941307d1317c99ffbfd9258fa2280d2c73fe73d1f24df2fe395bf7"
     },
     {
       "name": "app.bundle.js",
-      "sha256": "f111f829b5b7c02047b8e45d169a771e475a9d0f92c203c0faa073d875d1c817"
+      "sha256": "ff23ea732d488161a38c0338872d56ec7627486ecf0d48b5173f1699f9101790"
     }
   ],
   "realCustomerNotificationsEnabled": false,

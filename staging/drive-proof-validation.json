@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-11-10T17:26:55.025712+00:00",
+  "project": "rocketfix-360-staging",
+  "database": "rocketfix360database",
+  "folderId": "1HBnKsg81SyR3CKAH65bp3ryHclMqSNXt",
+  "folderName": "ROCKETFIX360 - PAYMENT PROOFS",
+  "folderType": "MY_DRIVE_OWNER_CONFIRMED",
+  "oauthSecretConfigured": false,
+  "driveApiEnabled": true,
+  "backendFolderAccessVerified": false,
+  "publicSharingVerified": false,
+  "liveProofUploadVerified": false,
+  "liveRemitMirrorVerified": false,
+  "liveProofFilesCreated": 0,
+  "existingSpreadsheetRecordsModified": false,
+  "unitTestsPassed": 73,
+  "emulatorTestRecordsPassed": 29,
+  "browserSuitesPassed": [
+    "proof select/drop, lost response/retry, one payment, database proof link, settings refresh/phone layout (Drive provider simulated)",
+    "original editing/framing/combined sample POS",
+    "real editing-only agreed-price payment in emulators"
+  ],
+  "deploymentStatus": "DEPLOYED_STAGING_ONLY",
+  "productionFirebaseModified": false,
+  "realEmailSendingEnabled": false,
+  "viberPolicyChanged": false,
+  "remainingBlocker": "Owner must create staging Desktop OAuth client and complete Google consent via connect-drive-oauth helper; folder privacy/access and live end-to-end must then be verified.",
+  "deployedCallableChecksPassed": 32,
+  "deployedAssetsMatchTestedArtifact": true,
+  "eventWorkersRemainPrivate": true
+}
