@@ -93,6 +93,9 @@ function setPOSAccess(profile){
  const lateStart=html.indexOf('function rfLateSave(){'),lateEnd=html.indexOf('function rfLateRepair(){',lateStart);
  html=html.slice(0,lateStart)+"function rfLateSave(){return window.modernPOS.submitLetter(rfLateOrder); }\n"+html.slice(lateEnd);
  html=html.replace('function resetForm(){',"function resetForm(){window.modernPOS?.resetSubmission();");
+ // Route the original history action through the same audited Firebase void flow.
+ html=html.replace(/function deleteRecord\(id\)\{[\s\S]*?(?=function exportJSON\()/,'function deleteRecord(id){return window.modernPOS.voidPayment(id);}\n');
+ html=html.replace('onclick="deleteRecord(', 'data-owner-delete onclick="deleteRecord(');
  html=html.replace('Transaction History</h1>','Remittances</h1>');
 
  if(options.hosted===true)html=html.replace(/<div class="panel"><label><input[^>]*id="fixtureMode"[\s\S]*?<\/div>/,'');

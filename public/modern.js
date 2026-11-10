@@ -17,11 +17,11 @@ export function bindModernPOS(api){
    const id=`<b>${esc(i.existingId)}</b><small>POS ${esc(o.posId)}</small>`,customer=`${esc(o.first+' '+(o.last||''))}<small>${esc(o.email||'')}</small>`,pay=financial(profile()?.role)?`${money(i._paid)} allocated<small>POS: ${money(o.received)} · ${esc(o.method)}</small>`:'Restricted';
    let action=(financial(profile()?.role)?link(o.proofUrl,'Open proof')+' ':'')+`<button class="btn outline" data-edit-record="${esc(o.posId)}" data-item-key="${esc(i.itemKey)}">View / Edit</button>`;
    if(['owner','admin'].includes(profile()?.role)){
+    action+=` <button class="btn outline" data-void-payment="${esc(o.posId)}">Delete remittance</button>`;
     const mirror=remitRecords.get(i.itemKey),state=mirrorBusy.has(i.itemKey)?'MIRRORING':mirror?.status==='MIRRORED'&&mirror.lastSyncedVersion<o.version?'NOT MIRRORED':mirror?.status||'NOT MIRRORED',dest=kind==='frame'?'Orders':o.stagingTest?'TEST REMIT':'REMIT';
     action+=`<small class="modern-badge">${esc(state)}</small><button class="btn outline" data-remit-mirror="${esc(o.posId)}" data-remit-key="${esc(i.itemKey)}" data-remit-kind="${kind}" ${mirrorBusy.has(i.itemKey)||kind==='frame'&&o.stagingTest?'disabled':''}>${state==='REVIEW REQUIRED'?'Review / reconcile':'Mirror to '+dest}</button>${mirror?.row?`<small>${dest} row ${mirror.row} · v${mirror.lastSyncedVersion}${mirror.lastSyncedVersion<o.version?' · saved changes pending sync':''}</small>`:''}`;
    }
    if(kind==='editing')return `<tr><td>${id}</td><td>${customer}</td><td>${esc(i.orderType)}<small>${esc(i.fileType)}${i.rushTargetDate?' · '+esc(i.rushTargetDate):''}</small></td><td>${esc(staff.find(s=>s.uid===i.assignedTo)?.name||i.assignedTo||'Unassigned')}</td><td><span class="modern-badge">${esc(i.status)}</span><small>${link(i.fileUrl,'Open file')}</small></td><td>${pay}<small>Frame: ${esc(i.frameOrderId||'—')}</small></td><td>${action}</td></tr>`;
-   if(['owner','admin'].includes(profile()?.role))action+='<button class="btn outline" disabled title="A verified frame test workbook is required">Mirror to Frame Orders</button><small>Test destination not configured</small>';
    const shipping=o.shipping||{},linked=o.items.filter(x=>x.kind==='editing'&&x.frameOrderId===i.existingId).map(x=>x.existingId).join(', ');
    return `<tr><td>${id}</td><td>${customer}<small>Receiver: ${esc(shipping.receiverName||[o.first,o.last].join(' '))}<br>${esc(shipping.contactPhone||o.phone||'')}</small></td><td>${esc(i.size)}<small>${esc(i.design)}</small></td><td>${esc(shipping.ship)}<small>${esc([shipping.street,shipping.barangay,shipping.city,shipping.province,shipping.postal].filter(Boolean).join(', '))}</small></td><td><span class="modern-badge">${esc(i.status)}</span><small>${esc(i.trackingNumber||'No tracking number')}</small></td><td>${pay}<small>Editing: ${esc(linked||'—')}</small></td><td>${action}</td></tr>`;
   }).join('')||`<tr><td colspan="7" class="empty">No matching ${kind==='editing'?'editing':'frame'} orders.</td></tr>`;
@@ -95,8 +95,27 @@ export function bindModernPOS(api){
  }
  document.addEventListener('click',event=>{const b=event.target.closest('[data-remit-mirror]');if(b)mirrorRemit(b.dataset.remitMirror,b.dataset.remitKey,b.dataset.remitKind);});
  $('closeDatabaseEditor').onclick=()=>$('databaseEditor').close();
+ const voiding=new Set();
+ async function voidPayment(posId){
+  if(!['owner','admin'].includes(profile()?.role)||voiding.has(posId))return;
+  voiding.add(posId);
+  try{
+   const {order}=await call('getOrder',{posId});
+   const reason=prompt('Delete (void) the entire remittance '+posId+' and all linked items? No spreadsheet rows are deleted. Enter a reason, or cancel.');
+   if(reason===null)return;
+   if(reason.trim().length<5)throw Error('Enter a reason of at least five characters.');
+   if(prompt('Type POS '+posId+' to confirm the void:')!==posId)return;
+   await call('voidOrder',{posId,expectedVersion:order.version,reason:reason.trim()});
+   orders=orders.filter(o=>o.posId!==posId);api.forgetPayment(posId);rows('editing');rows('frame');api.notify('Remittance voided · POS '+posId);await Promise.all([refresh(),dashboard()]);
+  }catch(error){api.notify('Could not void remittance: '+error.message,true);}finally{voiding.delete(posId);}
+ }
+ for(const [tab,label] of [['editingDatabase','Add editing order'],['frameDatabase','Add frame order'],['history','Add remittance']]){
+  const button=document.createElement('button');button.className='btn outline';button.textContent=label;button.hidden=true;
+  button.dataset.addRemittance='true';$(tab).querySelector('.heading').append(button);
+  button.onclick=()=>{if(busy||submission&&!submission.confirmed)return api.notify('Resolve the pending remittance before starting another.',true);api.openTab('new');window.resetForm();if(tab==='frameDatabase'){document.querySelector('#new .service .text-button').click();window.addService('frame');}};
+ }
  $('editPaymentCorrection').onclick=()=>{if(selected){$('databaseEditor').close();api.editPayment(selected.order);}};
- document.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-record]'),pay=event.target.closest('[data-payment-edit]'),open=event.target.closest('[data-open]');if(edit)openEditor(edit.dataset.editRecord,edit.dataset.itemKey);if(pay)call('getOrder',{posId:pay.dataset.paymentEdit}).then(({order})=>api.editPayment(order)).catch(e=>feedback('dashboardFeedback',e.message,true));if(open)api.openTab(open.dataset.open);});
+ document.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-record]'),pay=event.target.closest('[data-payment-edit]'),open=event.target.closest('[data-open]');const remove=event.target.closest('[data-void-payment]');if(remove)voidPayment(remove.dataset.voidPayment);if(edit)openEditor(edit.dataset.editRecord,edit.dataset.itemKey);if(pay)call('getOrder',{posId:pay.dataset.paymentEdit}).then(({order})=>api.editPayment(order)).catch(e=>feedback('dashboardFeedback',e.message,true));if(open)api.openTab(open.dataset.open);});
  for(const kind of ['editing','frame']){
   for(const suffix of ['Search','Status','Sort'])$(kind+'Db'+suffix).addEventListener(suffix==='Search'?'input':'change',()=>{const run=()=>{page[kind]=0;rows(kind);};if(suffix==='Search'){clearTimeout(searchTimer);searchTimer=setTimeout(run,180);}else run();});
   document.querySelector(`[data-db-prev="${kind}"]`).onclick=()=>{page[kind]--;rows(kind);};document.querySelector(`[data-db-next="${kind}"]`).onclick=()=>{page[kind]++;rows(kind);};document.querySelector(`[data-refresh-db="${kind}"]`).onclick=refresh;
@@ -130,6 +149,6 @@ export function bindModernPOS(api){
   try{const data=await call('integrationStatus');window.workspaceUI?.setIntegrations(data);panel.innerHTML='<h2>Background integrations</h2><p class="muted small">Manual synchronization sends editing orders to REMIT and frame orders to Orders. Firebase remains the primary database. Email delivery is disabled. Viber: '+(data.viberEnabled?'automatic real-remittance delivery enabled':'real delivery activation awaiting verification')+'.</p><div class="modern-table"><table><thead><tr><th>POS ID</th><th>Integration</th><th>Status</th><th>Attempts</th><th>Action</th></tr></thead><tbody>'+[...(data.remit||[]),...data.sheets,...data.notifications].map(n=>`<tr><td>${esc(n.posId)}</td><td>${esc(n.type)}</td><td>${esc(n.status)}<small>${esc(n.errorCode)}${n.row?' · '+(n.testOnly?'TEST ':'')+'row '+n.row+' · v'+n.version:''}</small></td><td>${n.attempts}</td><td>${n.canVerifyReal?`<button class="btn outline" data-retry-event="${esc(n.eventId)}" data-integration-type="VIBER" data-real-verification="true">Send one real confirmation</button>`:(n.status==='FAILED'&&n.type==='SHEETS'||n.status==='NOT_DELIVERED')&&n.attempts<3?`<button class="btn ghost" data-retry-event="${esc(n.eventId)}" data-integration-type="${esc(n.type)}">Retry confirmed failure</button>`:['REVIEW','REVIEW REQUIRED'].includes(n.status)?'Open Editing Database to reconcile':'—'}</td></tr>`).join('')+'</tbody></table></div>';panel.querySelectorAll('[data-retry-event]').forEach(b=>b.onclick=async()=>{if(b.dataset.realVerification&&!await window.workspaceUI.confirm('Send exactly one real remittance confirmation for POS '+b.dataset.retryEvent.split('_')[0]+' to REMIT - RF? No payment will be created or changed.',{title:'Verify real Viber delivery',label:'Send confirmation'}))return;b.disabled=true;try{await call(b.dataset.integrationType==='SHEETS'?'retrySheetsMirror':'retryNotification',{eventId:b.dataset.retryEvent});await integrations();}catch(error){api.notify(error.message,true);b.disabled=false;}});
   }catch(error){panel.textContent='Integration records unavailable: '+error.message;}
  }
- window.modernPOS={submit,submitLetter,resetSubmission(){if(submission?.confirmed)submission=null;},async authorized(){orders=[];serverCursor=null;initialized=false;remitRecords.clear();await Promise.all([refresh(),dashboard()]);},refresh};
+ window.modernPOS={submit,submitLetter,voidPayment,resetSubmission(){if(submission?.confirmed)submission=null;},async authorized(){document.querySelectorAll('[data-add-remittance]').forEach(button=>button.hidden=!financial(profile()?.role));document.body.classList.toggle('can-void-payment',['owner','admin'].includes(profile()?.role));orders=[];serverCursor=null;initialized=false;remitRecords.clear();await Promise.all([refresh(),dashboard()]);},refresh};
  return window.modernPOS;
 }

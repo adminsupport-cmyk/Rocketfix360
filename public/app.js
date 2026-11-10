@@ -78,9 +78,10 @@ async function dispatch(method,args){
 initWorkspace();
 const driveProofs=initDriveProofs({call:invoke,profile:()=>profile});
 window.posAPI={run:adapter.runner(dispatch)};
-window.firebasePOS={isDemo:useEmulators,loadMoreHistory,async loadAllHistory(){const all=new Map();let cursor=null;do{const page=await invoke('listOrders',{limit:150,cursor});for(const o of page.orders)all.set(o.posId,o);cursor=page.nextCursor;}while(cursor);historyCache.clear();for(const [id,o] of all)historyCache.set(id,o);historyCursor=null;historyInitialized=true;window.updateHistoryRecords(cachedHistory());return cachedHistory();},get historyState(){return {hasMore:!!historyCursor,loaded:historyCache.size};},get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
+window.firebasePOS={isDemo:useEmulators,canVoid:()=>['owner','admin'].includes(profile?.role),loadMoreHistory,async loadAllHistory(){const all=new Map();let cursor=null;do{const page=await invoke('listOrders',{limit:150,cursor});for(const o of page.orders)all.set(o.posId,o);cursor=page.nextCursor;}while(cursor);historyCache.clear();for(const [id,o] of all)historyCache.set(id,o);historyCursor=null;historyInitialized=true;window.updateHistoryRecords(cachedHistory());return cachedHistory();},get historyState(){return {hasMore:!!historyCursor,loaded:historyCache.size};},get fixtureMode(){return useEmulators||document.getElementById('fixtureMode')?.checked===true;}};
 bindModernPOS({call:invoke,profile:()=>profile,isDemo:useEmulators,
  uploadProof:(record,file)=>driveProofs.upload(record,file),save:record=>dispatch('execute',['save',[record,null]]),status:posId=>dispatch('execute',['status',[posId]]),
+ forgetPayment:id=>{historyCache.delete(id);window.updateHistoryRecords(cachedHistory());},
  acceptReceipt:record=>window.acceptCommittedReceipt(record),editPayment:order=>window.loadPaymentCorrection(adapter.fromFirebase(order)),
  notify:(message,error=false,id='')=>window.rfShowSubmitModal({title:error?'Action needed':id&&window.firebasePOS.fixtureMode?'TEST ORDER SAVED ✓':id?'PAYMENT SAVED ✓':'Notice',message,error,id,sound:!!id&&!error}),
  openTab:name=>{window.openTab(name);document.querySelector('nav [data-tab="'+name+'"]')?.dispatchEvent(new Event('click'));},refreshLegacy:()=>window.rfRefreshLive(true)

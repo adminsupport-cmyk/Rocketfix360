@@ -11,16 +11,24 @@ const server=http.createServer((req,res)=>{if(req.url==='/'){res.setHeader('Cont
  await page.locator('#loginEmail').fill('owner@rocketfix.local');await page.locator('#loginPassword').fill('Rocketfix-Staging-2026!');await page.locator('#loginSubmit').click();await page.locator('#firebaseLogin').waitFor({state:'hidden'}).catch(async e=>{console.error(await page.locator('#loginError').textContent());throw e;});
  await page.evaluate(()=>{Object.defineProperty(window.firebasePOS,'fixtureMode',{get(){return false;}});rfLoadFramePricing();});await page.waitForFunction(()=>rfFramePricing?.sourceVerified===true);
  for(const kind of ['frame','combined']){
- await page.locator('[data-tab="new"]').click();await page.getByRole('button',{name:'＋ Start New',exact:true}).click();await page.locator('#fullName').fill('Emulator '+kind+' workflow');await page.locator('#email').fill('N/A');
- if(kind==='frame')await page.locator('.service .text-button').click();else await page.locator('[data-name="amount"]').first().fill('500');
- await page.locator('#modeFrame').click();await page.locator('#shippingArea').selectOption('Luzon');await page.locator('#receiverName').fill('Local Receiver');
+ await page.locator('[data-tab="'+(kind==='frame'?'frameDatabase':'editingDatabase')+'"]').click();await page.getByRole('button',{name:kind==='frame'?'Add frame order':'Add editing order',exact:true}).click();await page.locator('#fullName').fill('Emulator '+kind+' workflow');await page.locator('#email').fill('N/A');
+ if(kind==='combined'){await page.locator('[data-name="amount"]').first().fill('500');await page.locator('#modeFrame').click();}
+ await page.locator('#shippingArea').selectOption('Luzon');await page.locator('#receiverName').fill('Local Receiver');
  if(kind==='frame'){await page.locator('.rf-addon-add').click();await page.locator('[data-name="addOnType"]').selectOption('Personalized Letter');await page.locator('[data-name="addOnCommissionRecipient"]').selectOption('Renz Malenab');await page.locator('[data-name="addOnMessage"]').fill('N/A');}
  await page.locator('#discount').fill('49');await page.locator('#tipRecipient').selectOption('Joyce');await page.locator('#tip').fill('10');await page.locator('#received').fill('2000');
  const id=await page.locator('#posId').textContent();await page.locator('#saveButtonText').click();await page.waitForFunction(()=>document.getElementById('rfSubmitOverlay').classList.contains('on')&&document.getElementById('rfSubmitTitle').textContent==='PAYMENT SAVED ✓');
  const order=(await db.doc('orders/'+id).get()).data();assert.equal(order.paymentMode,'REAL_POS_V1');assert.equal(order.stagingTest,false);assert.equal(order.pricingStatus,'SOURCE_VERIFIED');assert.equal(order.shippingFee,220);assert.equal(order.due,kind==='frame'?1180:1480);assert.equal(order.excess,kind==='frame'?820:520);
  assert.equal((await db.collection('notificationOutbox').where('posId','==',id).get()).size,1);
  if(kind==='frame')assert.equal((await db.doc('earnings/'+encodeURIComponent('LETTER:'+order.items[0].existingId)).get()).data().amount,50);
+ const centered=await page.locator('#rfSubmitOverlay').evaluate(el=>{const r=el.getBoundingClientRect();return r.width===innerWidth&&r.height===innerHeight&&getComputedStyle(el).alignItems==='center'&&getComputedStyle(el).justifyContent==='center';});assert.equal(centered,true);
  await page.locator('.rf-submit-close').click();await page.locator('[data-tab="frameDatabase"]').click();const row=page.locator('#frameDbRows tr').filter({hasText:id});await row.getByRole('button',{name:'Mirror to Orders',exact:true}).waitFor();
+ if(kind==='frame'){
+  page.on('dialog',dialog=>dialog.accept(dialog.message().startsWith('Type POS')?id:'Local duplicate entry test'));
+  await row.getByRole('button',{name:'Delete remittance',exact:true}).click();
+  await page.getByText('Remittance voided · POS '+id,{exact:true}).waitFor();
+  assert.equal((await db.doc('orders/'+id).get()).data().status,'VOIDED');
+  await page.locator('.rf-submit-close').click();
+ }
  }
  await page.locator('nav [data-tab="settings"]').click();await page.locator('[data-settings="framePricing"]').click();await page.waitForFunction(()=>document.querySelector('[data-rate="Luzon|Small"]')?.value==='220');
  const out=path.resolve(__dirname,'../.runtime/real-orders');fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'verified-pricing.png'),fullPage:true});assert.deepEqual(errors,[]);
