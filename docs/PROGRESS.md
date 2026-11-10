@@ -1,3 +1,11 @@
+# Firebase-only authentication — November 10, 2026
+
+Removed the migrated device gate, device-token arguments, old login/session helpers, approval/loading controls and Google Apps Script-shaped runtime transport. The standalone Firebase email/password form is controlled solely by Firebase Auth. Its auth-state observer calls the existing backend myAccess check against active staff membership before starting POS business data loads. Missing, inactive or invalid-role membership shows Access denied. A retry for the same Firebase account rechecks current staff membership. The original POS business layout and financial protections remain intact.
+
+Checks/build and 42 unit tests pass; all 19 emulator integration records pass. Browser tests pass for signed-out startup, Owner/Sales sign-in/sign-out, missing/inactive/invalid-role denial, newly activated membership retry, and original editing/framing/combined sample workflows and desktop/iPad layouts. Staging Hosting only; no backend, production, Google Sheets or notification-provider changes.
+
+---
+
 # Login startup unblocked — November 10, 2026
 
 Login fields now appear immediately without waiting for Firebase initialization or showing a startup spinner. Signing in keeps the form available, and errors do not trap the employee behind a loading screen. Checks/build and 42 tests pass. A browser regression deliberately blocked the Firebase bundle and verified that both account fields remained editable. Authentication and role validation remain required. Staging Hosting only.

@@ -207,45 +207,7 @@
 @media(max-width:850px){.rf-weekly-summary{grid-template-columns:1fr 1fr}.rf-weekly-card.rf-feature{grid-column:1/-1}.rf-weekly-days{gap:5px}.rf-weekly-day{padding:10px 3px}.rf-weekly-day .dayamount{font-size:10px}}
 @media(max-width:520px){#daily .rf-weekly{padding:16px 12px}.rf-weekly-summary{grid-template-columns:1fr}.rf-weekly-card.rf-feature{grid-column:auto}.rf-weekly-nav{width:100%;justify-content:space-between}.rf-weekly-nav input{flex:1;width:110px}.rf-weekly-day .bar-rail{height:36px}.rf-weekly-day .dayamount{font-size:9px}.rf-weekly-day .weekday{font-size:10px}.rf-weekly-days{gap:3px}}
 </style>
-<style>
-/* Rocketfix secure workstation — minimal space computer aesthetic */
-#rfDeviceGate{position:fixed;inset:0;z-index:60000;display:flex;align-items:center;justify-content:center;padding:18px;background:#080a0e;color:#e8edf3;font-family:Inter,system-ui,Arial,sans-serif}
-#rfDeviceGate[hidden]{display:none!important}
-#rfDeviceGate::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(1px 1px at 15% 20%,#77868b 98%,transparent),radial-gradient(1px 1px at 83% 38%,#77868b 98%,transparent),radial-gradient(1px 1px at 41% 78%,#77868b 98%,transparent),radial-gradient(1px 1px at 68% 8%,#77868b 98%,transparent);opacity:.12}
-.rf-device-shell{position:relative;width:min(485px,100%);z-index:1}
-.rf-device-card{background:#14181f;border:1px solid #30363f;border-radius:16px;overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.22)}
-.rf-simple-head{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #30363f;padding:17px 22px}
-.rf-simple-brand{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;color:#dce7ed;font-weight:800}
-.rf-simple-dot{display:inline-block;width:7px;height:7px;background:#8bdbbe;border-radius:50%;margin-right:9px}
-.rf-simple-meta{font-family:ui-monospace,Consolas,monospace;font-size:10px;color:#98a9ad}
-.rf-simple-main{padding:29px 24px 26px}
-.rf-simple-kicker{font-size:11px;color:#9bebbb;letter-spacing:.12em;font-weight:800;margin-bottom:12px}
-.rf-simple-main h2{font-size:27px;line-height:1.12;letter-spacing:-.035em;color:#e8edf3;margin:0 0 11px}
-.rf-simple-intro{font-size:13px;color:#a2acb9;line-height:1.55;margin:0 0 25px}
-#rfDeviceLoading{display:flex;flex-direction:column;gap:11px}
-#rfDeviceLoading[hidden],#rfDeviceRegisterForm[hidden],#rfDevicePending[hidden],#rfDeviceLoadingRetry[hidden]{display:none!important}
-.rf-simple-status{display:flex;align-items:center;gap:11px;margin-bottom:3px}
-.rf-simple-symbol{font-family:ui-monospace,Consolas,monospace;font-size:22px;color:#8bdbbe;font-weight:800}
-#rfDeviceLoadingTitle{font-size:18px;font-weight:800;letter-spacing:-.025em;color:#e8edf3}
-#rfDeviceLoadingDescription{font-size:12px;line-height:1.55;color:#9da8b7}
-.rf-simple-bar{height:6px;border-radius:100px;overflow:hidden;background:#2a3038;margin:9px 0}
-.rf-simple-bar>span{display:block;width:35%;height:100%;background:#5cbf96;border-radius:100px;animation:rfSimpleSlide 2s ease-in-out infinite}
-@keyframes rfSimpleSlide{0%{transform:translateX(-110%)}50%{transform:translateX(210%)}100%{transform:translateX(-110%)}}
-.rf-simple-footer{padding:12px 22px;background:#101318;border-top:1px solid #30363f;color:#9da8b7;font:10px ui-monospace,Consolas,monospace;letter-spacing:.055em}
-.rf-device-card label{display:block;font-size:12px;font-weight:700;color:#abb6c3;margin:14px 0 7px}
-.rf-device-card input{height:48px;width:100%;background:#0c1016;color:#f2f6fa;border:1px solid #3b434e;border-radius:11px;padding:10px 12px;outline:none}
-.rf-device-card input:focus{border-color:#5cbf96}
-.rf-device-card button{width:100%;min-height:44px;border:0;border-radius:11px;background:#23815b;color:#fff;font-weight:800;margin-top:14px;cursor:pointer}
-.rf-device-card button:disabled{opacity:.6;cursor:wait}
-#rfDeviceLoadingRetry{max-width:170px;background:#18221e;border:1px solid #375a49}
-#rfDeviceRegisterForm,#rfDevicePending{margin-top:3px}
-#rfDevicePending p{font-size:12px;color:#9da8b7;line-height:1.6;margin:0 0 10px}
-#rfDeviceRequestCode{text-align:center;font-size:26px;font-weight:900;letter-spacing:.1em;color:#9bebbb;border:1px dashed #375a49;background:#0c1016;padding:16px;border-radius:10px}
-#rfDeviceMsg{font-size:12px;color:#ffb6b6;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0 0;line-height:1.5}
-#rfDeviceUser{font-size:12px;color:#9bebbb;border:1px solid #375a49;border-radius:30px;padding:8px 12px}
-@media(max-width:550px){.rf-simple-head{padding:15px 17px}.rf-simple-main{padding:26px 19px 24px}.rf-simple-main h2{font-size:26px}.rf-simple-meta{font-size:9px}}
-@media(prefers-reduced-motion:reduce){.rf-simple-bar>span{animation:none;width:55%}}
-</style>
+
 <!-- DEVICE POS iPAD RESPONSE RECONCILIATION V1: status lookup; no automatic retry -->
 <style>
 .rf-email-pending-choice{display:flex!important;align-items:center;gap:9px;margin:9px 0 0!important;font-size:12px!important;color:#b9d7c9!important;cursor:pointer;font-weight:600!important}
@@ -298,14 +260,14 @@
 .rf-addon-hint{font-size:11px;color:#b8c7be;line-height:1.4;margin-top:5px}
 @media(max-width:620px){.rf-addon-body{grid-template-columns:1fr}}
 </style><style> .rf-late-overlay{position:fixed;inset:0;z-index:13000;background:rgba(0,0,0,.84);display:flex;justify-content:center;align-items:center;padding:14px;overflow:auto}.rf-late-overlay[hidden],.rf-late-card [hidden]{display:none!important}.rf-late-card{background:#141c20;border:1px solid #365e4e;color:#e9f6ed;border-radius:18px;padding:22px;width:min(720px,100%);max-height:94vh;overflow:auto}.rf-late-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:8px}.rf-late-head h2{margin:5px 0 0;font-size:22px}.rf-late-card .hint{font-size:13px}@media(max-width:600px){.rf-late-head{align-items:center}.rf-late-card{padding:16px}}</style><style>/* Fresh login only; the original POS layout remains source-owned. */
-#rfDeviceGate{background:radial-gradient(ellipse at 50% 0%,#17382b66,transparent 58%),#080a0e;padding:28px;overflow:auto}
-#rfDeviceGate::before{display:none}
+#firebaseLogin{background:radial-gradient(ellipse at 50% 0%,#17382b66,transparent 58%),#080a0e;padding:28px;overflow:auto}
+#firebaseLogin::before{display:none}
 .rf-login-card{width:min(440px,100%);margin:auto;background:#14181f;border:1px solid #303b36;border-radius:24px;padding:38px;box-shadow:0 28px 90px #0005}
 .rf-login-logo{display:block;width:170px;height:64px;object-fit:contain;object-position:left;margin-bottom:28px}
 .rf-login-heading>span{display:block;color:#8bdbbe;font-size:10px;font-weight:800;letter-spacing:.18em;margin-bottom:12px}
 .rf-login-heading h1{font-size:32px;letter-spacing:-1px;line-height:1.15;margin:0 0 10px;color:#f2f6fa}
 .rf-login-heading p{font-size:14px;color:#9da8b7;line-height:1.6;margin:0 0 30px}
-#rfDeviceRegisterForm{margin:0}
+#firebaseLoginForm{margin:0}
 .rf-login-card label{font-size:12px;font-weight:650;color:#bbc8c2;margin:0 0 9px}
 .rf-login-card input{height:50px;background:#0c1016;border:1px solid #3b434e;border-radius:11px;padding:12px 14px;margin-bottom:21px;color:#f2f6fa;transition:border-color .15s,box-shadow .15s}
 .rf-login-card input:focus{outline:none;border-color:#5cbf96;box-shadow:0 0 0 3px #5cbf961c}
@@ -315,24 +277,25 @@
 .rf-login-card button:disabled{opacity:.6;cursor:wait}
 .rf-login-footer{display:flex;justify-content:center;gap:10px;color:#75867f;font-size:11px;border-top:1px solid #2a3330;margin-top:28px;padding-top:22px}
 .rf-login-footer span{color:#426351}
-#rfDeviceLoading{text-align:center;padding:10px 0 0;gap:12px}
-#rfDeviceLoading strong{font-size:15px;color:#e8edf3}
-#rfDeviceLoading p{font-size:12px;color:#9da8b7;margin:0;line-height:1.6}
-.rf-login-spinner{width:27px;height:27px;border:2px solid #294b3c;border-top-color:#8bdbbe;border-radius:50%;margin:0 auto 12px;animation:rfDeleteSpin .8s linear infinite}
-#rfDeviceMsg:empty{display:none}
-@media(max-width:520px){#rfDeviceGate{padding:18px}.rf-login-card{padding:30px 24px;border-radius:20px}.rf-login-heading h1{font-size:29px}}
-@media(prefers-reduced-motion:reduce){.rf-login-spinner{animation:none}}
-</style></head><body><div id="rfDeviceGate">
+#loginError:empty{display:none}
+@media(max-width:520px){#firebaseLogin{padding:18px}.rf-login-card{padding:30px 24px;border-radius:20px}.rf-login-heading h1{font-size:29px}}
+
+#firebaseLogin{position:fixed;inset:0;z-index:60000;display:flex;align-items:center;justify-content:center;color:#e8edf3;font-family:Inter,system-ui,Arial,sans-serif}
+#firebaseLogin[hidden]{display:none!important}
+#loginError{font-size:12px;line-height:1.6;color:#ffb6b6;margin:14px 0 0;overflow-wrap:anywhere}
+#loginStatus{font-size:12px;line-height:1.6;color:#9da8b7;margin:14px 0 0}
+#loginStatus:empty{display:none}
+#employeeBadge{font-size:12px;color:#9bebbb;border:1px solid #375a49;border-radius:30px;padding:8px 12px;cursor:pointer}
+</style></head><body><div id="firebaseLogin">
  <section class="rf-login-card" aria-labelledby="rfLoginTitle">
   <img class="rf-login-logo" src="https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png" alt="Rocketfix">
   <div class="rf-login-heading"><span>ADMIN POS</span><h1 id="rfLoginTitle">Welcome back.</h1><p>Sign in to your Rocketfix360 account.</p></div>
-  <div id="rfDeviceLoading" role="status" aria-live="polite" hidden><div class="rf-login-spinner" aria-hidden="true"></div><strong id="rfDeviceLoadingTitle">Signing you in…</strong><p id="rfDeviceLoadingDescription">Connecting to Rocketfix POS…</p><button type="button" id="rfDeviceLoadingRetry" hidden onclick="rfDeviceShowMode('register')">Try again</button></div>
-  <form id="rfDeviceRegisterForm" onsubmit="event.preventDefault();rfDeviceStartRequest()">
-   <label for="rfDeviceNameInput">Employee email</label><input id="rfDeviceNameInput" type="email" maxlength="200" autocomplete="username" placeholder="you@example.com" required>
-   <label for="rfCompanyPinInput">Password</label><input id="rfCompanyPinInput" type="password" autocomplete="current-password" placeholder="Enter your password" required>
-   <button type="submit" id="rfDeviceRequestButton">Sign in <span aria-hidden="true">→</span></button>
+  <form id="firebaseLoginForm" onsubmit="event.preventDefault()">
+   <label for="loginEmail">Employee email</label><input id="loginEmail" type="email" maxlength="200" autocomplete="username" placeholder="you@example.com" required>
+   <label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+   <button type="submit" id="loginSubmit">Sign in <span aria-hidden="true">→</span></button>
   </form>
-  <p id="rfDeviceMsg" role="alert"></p>
+  <p id="loginError" role="alert"></p><p id="loginStatus" role="status" aria-live="polite"></p>
   <div class="rf-login-footer">Rocketfix360 <span>•</span> Admin POS</div>
  </section>
 </div>
@@ -345,7 +308,7 @@
 <div class="rf-up-actions"><a id="rfPosUpdateNow" href="/" target="_top" onclick="return rfPosApplyUpdate(event)">Update Now</a><button type="button" id="rfPosUpdateLater" onclick="rfPosLater()">Later</button></div>
 <div id="rfPosUpdateProgress"><span></span></div><div class="rf-up-note" id="rfPosUpdateNote">Preparing the newest version…</div>
 </div></aside><div id="rfQueueDock" aria-live="polite"><div class="rf-queue-head"><span>Remittance waiting list</span><span id="rfQueueCount">0 pending</span></div><div class="rf-queue-items" id="rfQueueItems"></div></div><div id="rfSubmitOverlay" role="dialog" aria-modal="true" aria-labelledby="rfSubmitTitle" aria-describedby="rfSubmitMessage"><div class="rf-submit-card"><button type="button" class="rf-submit-x" aria-label="Close notification" onclick="rfCloseSubmitModal()">×</button><div class="rf-submit-bubble"></div><div class="rf-submit-check" aria-hidden="true"><svg viewBox="0 0 110 110"><path class="rf-submit-tick" d="M30 57l17 18 34-39"></path></svg></div><h2 class="rf-submit-title" id="rfSubmitTitle">Added to Queue!</h2><p class="rf-submit-sub" id="rfSubmitMessage">Your remittance is uploading. You can start the next order now.</p><div class="rf-submit-id" id="rfSubmitId"></div><button type="button" class="rf-submit-close" onclick="rfCloseSubmitModal()">Continue to next order</button><button type="button" id="rfSubmitSoundRetry" class="rf-submit-sound" onclick="rfReplaySubmissionSound()">♫ Tap to play confirmation sound</button></div></div><div id="rfDeleteOverlay" class="rf-delete-overlay" role="dialog" aria-modal="true" aria-labelledby="rfDeleteTitle" aria-describedby="rfDeleteDesc" aria-hidden="true"><div class="rf-delete-card"><div class="rf-delete-spinner" aria-hidden="true"></div><h2 id="rfDeleteTitle">Deleting transaction</h2><p id="rfDeleteDesc">Please wait while this order is voided in the payment register. Do not close this tab.</p><div id="rfDeleteId" class="rf-delete-id"></div></div></div><audio id="rfSuccessAudio" preload="auto" playsinline webkit-playsinline></audio>
-<div id="rfLateOverlay" class="rf-late-overlay" role="dialog" aria-modal="true" aria-label="Add add-on to frame order" hidden><div class="rf-late-card"><div class="rf-late-head"><div><div style="color:#97deb7;font-size:12px;font-weight:800">FRAME ORDERS · LATE ADD-ON</div><h2>Personalized Letter · ₱200</h2></div><button class="btn ghost" type="button" onclick="rfLateClose()">✕ Close</button></div><p class="muted" style="margin:0 0 15px">Search an existing Frame Order ID. Only the add-on columns will be updated; original frame status and price remain unchanged.</p><div class="grid"><div class="full"><label>Frame Order ID</label><div class="buttonrow"><input id="rfLateId" placeholder="Enter any existing Frame Order ID" style="flex:1;width:auto;text-transform:uppercase" onkeydown="if(event.key==='Enter')rfLateLookup()"><button class="btn outline" type="button" onclick="rfLateLookup()">Look up order</button></div></div></div><div id="rfLateInfo" class="hint" style="margin:12px 0">Enter any existing Frame Order ID to begin, including shorter IDs.</div><div id="rfLateFields" hidden><div class="grid"><div><label>Add-on</label><input readonly value="Personalized Letter — ₱200"></div><div><label>Envelope Color</label><select id="rfLateColor"><option>Pink</option><option>Blue</option><option>White Gold</option></select></div><div><label>Font</label><select id="rfLateFont"><option>Cursive</option><option>Typewrited</option><option selected>Regular</option></select></div><div><label>Commission recipient · ₱50</label><select id="rfLateCommission"><option value="">Select employee</option><option>Joyce Marianne Legaspi</option><option>Renz Malenab</option><option>Joy Deplomo</option><option>Lerni Belino</option><option>Mariz Osabel</option></select><small class="rf-ph-help">Staff earning only; the customer still pays ₱200.</small></div><div><label>Payment date</label><input type="date" id="rfLateDate"></div><div><label>Payment method</label><select id="rfLateMethod"><option>GCash</option><option>BDO</option><option>BPI</option><option>GoTyme</option><option>Cash</option><option>Bank Transfer</option><option>Other</option></select></div><div><label>Payment reference (optional)</label><input id="rfLatePaymentRef" maxlength="150" placeholder="Transaction reference"></div><div class="full"><label>Exact Letter Message · or N/A</label><textarea id="rfLateMessage" rows="5" maxlength="6000" placeholder="Enter 100–6000 characters, or N/A"></textarea></div></div><label style="margin:14px 0"><input type="checkbox" id="rfLatePaid" style="width:auto;height:auto;margin-right:8px">I confirm we received the ₱200 add-on payment.</label><div class="hint">After Save Paid, the ₱200 payment is recorded once. Email and Viber sending are disabled. Viber delivery status is monitored separately; pending delivery never means a failed payment.</div><button id="rfLateSaveButton" type="button" class="btn" style="width:100%;margin-top:14px" onclick="rfLateSave()">Save Paid · Add to Remittance Queue</button></div><button id="rfLateRepair" type="button" class="btn outline" style="width:100%;margin-top:12px" hidden onclick="rfLateRepair()">Restore Already-Paid Add-on to Frame Order · No New Payment</button><button id="rfLateViberOnly" type="button" class="btn outline" style="width:100%;margin-top:12px" hidden onclick="rfLateSendViberOnly()">Send Viber Report Only · No New Payment</button><div id="rfLateMsg" role="status" style="color:#9be5b9;font-size:13px;margin-top:12px"></div><div id="rfLateViberReport" hidden style="margin-top:12px"><textarea id="rfLateViberText" readonly rows="9" style="width:100%;height:auto"></textarea><button type="button" class="btn outline" onclick="rfLateCopyViber()">Copy Viber Payment Report</button><div class="small muted" style="margin-top:8px">If automatic Viber sending is unavailable, copy the report and paste it into your Viber remittance chat.</div></div></div></div><header><div class="logo-wrap"><img class="app-logo" crossorigin="anonymous" src="https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png" alt="Rocketfix logo"></div><div class="app-top-right"><span id="rfDeviceUser" hidden>Staff sign-in required</span><span class="top-tag">POS · V16.17</span></div></header>
+<div id="rfLateOverlay" class="rf-late-overlay" role="dialog" aria-modal="true" aria-label="Add add-on to frame order" hidden><div class="rf-late-card"><div class="rf-late-head"><div><div style="color:#97deb7;font-size:12px;font-weight:800">FRAME ORDERS · LATE ADD-ON</div><h2>Personalized Letter · ₱200</h2></div><button class="btn ghost" type="button" onclick="rfLateClose()">✕ Close</button></div><p class="muted" style="margin:0 0 15px">Search an existing Frame Order ID. Only the add-on columns will be updated; original frame status and price remain unchanged.</p><div class="grid"><div class="full"><label>Frame Order ID</label><div class="buttonrow"><input id="rfLateId" placeholder="Enter any existing Frame Order ID" style="flex:1;width:auto;text-transform:uppercase" onkeydown="if(event.key==='Enter')rfLateLookup()"><button class="btn outline" type="button" onclick="rfLateLookup()">Look up order</button></div></div></div><div id="rfLateInfo" class="hint" style="margin:12px 0">Enter any existing Frame Order ID to begin, including shorter IDs.</div><div id="rfLateFields" hidden><div class="grid"><div><label>Add-on</label><input readonly value="Personalized Letter — ₱200"></div><div><label>Envelope Color</label><select id="rfLateColor"><option>Pink</option><option>Blue</option><option>White Gold</option></select></div><div><label>Font</label><select id="rfLateFont"><option>Cursive</option><option>Typewrited</option><option selected>Regular</option></select></div><div><label>Commission recipient · ₱50</label><select id="rfLateCommission"><option value="">Select employee</option><option>Joyce Marianne Legaspi</option><option>Renz Malenab</option><option>Joy Deplomo</option><option>Lerni Belino</option><option>Mariz Osabel</option></select><small class="rf-ph-help">Staff earning only; the customer still pays ₱200.</small></div><div><label>Payment date</label><input type="date" id="rfLateDate"></div><div><label>Payment method</label><select id="rfLateMethod"><option>GCash</option><option>BDO</option><option>BPI</option><option>GoTyme</option><option>Cash</option><option>Bank Transfer</option><option>Other</option></select></div><div><label>Payment reference (optional)</label><input id="rfLatePaymentRef" maxlength="150" placeholder="Transaction reference"></div><div class="full"><label>Exact Letter Message · or N/A</label><textarea id="rfLateMessage" rows="5" maxlength="6000" placeholder="Enter 100–6000 characters, or N/A"></textarea></div></div><label style="margin:14px 0"><input type="checkbox" id="rfLatePaid" style="width:auto;height:auto;margin-right:8px">I confirm we received the ₱200 add-on payment.</label><div class="hint">After Save Paid, the ₱200 payment is recorded once. Email and Viber sending are disabled. Viber delivery status is monitored separately; pending delivery never means a failed payment.</div><button id="rfLateSaveButton" type="button" class="btn" style="width:100%;margin-top:14px" onclick="rfLateSave()">Save Paid · Add to Remittance Queue</button></div><button id="rfLateRepair" type="button" class="btn outline" style="width:100%;margin-top:12px" hidden onclick="rfLateRepair()">Restore Already-Paid Add-on to Frame Order · No New Payment</button><button id="rfLateViberOnly" type="button" class="btn outline" style="width:100%;margin-top:12px" hidden onclick="rfLateSendViberOnly()">Send Viber Report Only · No New Payment</button><div id="rfLateMsg" role="status" style="color:#9be5b9;font-size:13px;margin-top:12px"></div><div id="rfLateViberReport" hidden style="margin-top:12px"><textarea id="rfLateViberText" readonly rows="9" style="width:100%;height:auto"></textarea><button type="button" class="btn outline" onclick="rfLateCopyViber()">Copy Viber Payment Report</button><div class="small muted" style="margin-top:8px">If automatic Viber sending is unavailable, copy the report and paste it into your Viber remittance chat.</div></div></div></div><header><div class="logo-wrap"><img class="app-logo" crossorigin="anonymous" src="https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png" alt="Rocketfix logo"></div><div class="app-top-right"><span id="employeeBadge" hidden>Staff sign-in required</span><span class="top-tag">POS · V16.17</span></div></header>
 <nav><button class="active" data-tab="new">＋ New Remittance</button><button data-tab="daily">Daily Sales</button><button data-tab="history">Transactions</button><button data-tab="settings">Settings & Mappings</button></nav>
 <main class="wrap"><section class="tab active" id="new"><div class="heading"><div><h1>New Remittance</h1><p class="muted">Encode a transaction once, distribute it to editing and frame management.</p></div><div class="buttonrow"><button class="btn outline" onclick="rfLateOpen()">＋ Add-on</button><button class="btn outline" onclick="resetForm()">＋ Start New</button></div></div><div id="editBanner" class="edit-banner">Editing existing transaction <b id="editLabel"></b> · <button class="btn ghost" onclick="resetForm()">Cancel editing</button></div><div class="columns"><div>
 <div class="panel"><h2>01 · Customer</h2><div class="grid"><div class="full"><label>Returning customer lookup</label><input id="lookup" list="customers" autocomplete="off" placeholder="Search returning customers by name or email" oninput="lookupCustomer()"><datalist id="customers"></datalist><div class="rf-lookup-refresh-line"><div class="rf-lookup-info" id="rfLookupInfo" role="status">Loading returning-customer directory…</div><button type="button" class="btn ghost rf-lookup-refresh" id="rfLookupRefreshBtn" onclick="rfLoadCustomerDirectory(true)">↻ Check new customers</button></div></div><div class="full"><label>Full name * <small style="font-weight:400;opacity:.75">· One word or N/A accepted</small></label><input id="fullName" placeholder="Juan Dela Cruz" autocomplete="name" oninput="rfSyncFullName()"><input id="first" type="hidden"><input id="last" type="hidden"></div><div><label>Email / confirmation address</label><input type="text" id="email" placeholder="customer@email.com or N/A" autocomplete="email" oninput="rfEmailPendingInput()"><label class="rf-email-pending-choice"><input type="checkbox" id="rfEmailPending" onchange="rfSetEmailPending(this.checked)"> <span>Email pending — use N/A</span></label><div class="rf-email-pending-hint" id="rfEmailPendingHint" hidden>Confirmation will wait until a valid email is added through Edit Transaction.</div></div><div><label>Mobile number</label><input id="phone" placeholder="09XXXXXXXXX"></div></div></div>
@@ -401,34 +364,15 @@
 </div></div>
 <script>
 
-let rfDeviceReady=false,rfDeviceToken='';
-function rfDeviceError(msg){document.getElementById('rfDeviceMsg').textContent=String(msg||'');}
-function rfDeviceShowMode(mode,title,description){
- document.getElementById('rfDeviceLoading').hidden=mode!=='loading';document.getElementById('rfDeviceRegisterForm').hidden=mode!=='register';
- if(title)document.getElementById('rfDeviceLoadingTitle').textContent=title;
- if(description)document.getElementById('rfDeviceLoadingDescription').textContent=description;
- rfDeviceError('');
-}
-function rfFirebaseSession(profile,error){
- rfDeviceReady=!!profile;rfDeviceToken=profile?.uid||'';
- document.getElementById('rfDeviceGate').hidden=!!profile;
- document.getElementById('rfDeviceRequestButton').disabled=false;
- if(!profile){rfDeviceShowMode('register');rfDeviceError(error||'');return;}
- const label=document.getElementById('rfDeviceUser');label.hidden=false;label.textContent='Staff: '+profile.name;label.onclick=rfStaffSignOut;label.style.cursor='pointer';
+let posAuthorized=false;
+function setPOSAccess(profile){
+ posAuthorized=!!profile;
+ const label=document.getElementById('employeeBadge');label.hidden=!profile;
+ if(!profile)return;
+ label.textContent='Staff: '+profile.name;
  document.querySelector('nav [data-tab="settings"]').hidden=!['owner','admin'].includes(profile.role);
- rfDeviceStartApp();
+ startPOS();
 }
-async function rfDeviceStartRequest(){
- if(!window.firebasePOS)return rfDeviceError('Connection is starting. Please try again.');
- const btn=document.getElementById('rfDeviceRequestButton');if(btn.disabled)return;btn.disabled=true;
- rfDeviceError('');
- const timeout=setTimeout(()=>{if(!rfDeviceReady){btn.disabled=false;rfDeviceError('Sign-in is taking longer than expected. Please check your connection and try again.');}},20000);
- try{await window.firebasePOS.signIn(document.getElementById('rfDeviceNameInput').value.trim(),document.getElementById('rfCompanyPinInput').value);document.getElementById('rfCompanyPinInput').value='';}
- catch(error){btn.disabled=false;rfDeviceShowMode('register');rfDeviceError(error.message);}
- finally{clearTimeout(timeout);if(!rfDeviceReady)btn.disabled=false;}
-}
-function rfStaffSignOut(){if(confirm('Sign out and change staff?'))window.firebasePOS.signOut();}
-function rfDeviceInit(){rfDeviceShowMode('register');}
 const ROCKETFIX_LOGO_URL = 'https://res.cloudinary.com/dgu2kmk8y/image/upload/v1793440407/LOGO.png';
 
 const $=id=>document.getElementById(id), key='rocketfix-pos-live-v9';
@@ -549,8 +493,8 @@ function rfFrameFormula(item,w,h){
  return {price:Math.max(minimum,Math.ceil(w*h*rate+base)),reason:''};
 }
 function rfLoadFramePricing(){
- if(!rfDeviceReady)return;
- google.script.run.withSuccessHandler(cfg=>{rfFramePricing=cfg;rfRenderPricingSettings();rfUpdateShipping();}).withFailureHandler(e=>{const n=$('rfPricingSettingsMessage');if(n)n.textContent='Cannot load pricing: '+String(e.message||e);}).rfDeviceCall(rfDeviceToken,'framePricingGet',[]);
+ if(!posAuthorized)return;
+ window.posAPI.run.withSuccessHandler(cfg=>{rfFramePricing=cfg;rfRenderPricingSettings();rfUpdateShipping();}).withFailureHandler(e=>{const n=$('rfPricingSettingsMessage');if(n)n.textContent='Cannot load pricing: '+String(e.message||e);}).execute('framePricingGet',[]);
 }
 function rfRenderPricingSettings(){
  if(!rfFramePricing)return;
@@ -569,7 +513,7 @@ function rfSavePricingSettings(){
  RF_FRAME_SHIPPING_AREAS.forEach(area=>RF_FRAME_TIER_NAMES.forEach(tier=>{const key=area+'|'+tier;cfg.rates[key]={rate:Number(document.querySelector('[data-rate="'+key+'"]').value),days:document.querySelector('[data-days="'+key+'"]').value.trim()};}));
  RF_FRAME_CUSTOM_KEYS.forEach(([key])=>{cfg.custom[key]=document.querySelector('[data-custom-config="'+key+'"]').value;});
  $('rfPricingSettingsMessage').textContent='Saving…';
- google.script.run.withSuccessHandler(x=>{rfFramePricing=x;$('rfPricingSettingsMessage').textContent='Saved. New orders will use these rates.';rfUpdateShipping();}).withFailureHandler(e=>{$('rfPricingSettingsMessage').textContent='Unable to save: '+String(e.message||e);}).rfDeviceCall(rfDeviceToken,'framePricingSave',[cfg]);
+ window.posAPI.run.withSuccessHandler(x=>{rfFramePricing=x;$('rfPricingSettingsMessage').textContent='Saved. New orders will use these rates.';rfUpdateShipping();}).withFailureHandler(e=>{$('rfPricingSettingsMessage').textContent='Unable to save: '+String(e.message||e);}).execute('framePricingSave',[cfg]);
 }
 function rfClientFrameTier(item){
  let w,h;if(item.customSize){w=Number(item.customWidth);h=Number(item.customHeight);}else{const m=String(item.size||'').match(/([\d.]+)\s*"?\s*[x×]\s*([\d.]+)/i);if(!m)return null;w=Number(m[1]);h=Number(m[2]);}
@@ -1382,10 +1326,10 @@ function rfRenderQueue(){
 }
 function rfDismissJob(id){const i=rfJobs.findIndex(j=>j.kind!=='late'&&j.record?.posId===id&&['failed','unconfirmed'].includes(j.status));if(i>=0){rfStopJobWatch(rfJobs[i]);rfJobs.splice(i,1);rfRenderQueue();}}
 function rfRefreshLive(silent=true){
- if(!window.google?.script?.run)return;
+ if(!window.posAPI?.run)return;
  if(rfHistoryLoading){rfHistoryAgain=true;return;}
  rfHistoryLoading=true;
- google.script.run.withSuccessHandler(rows=>{
+ window.posAPI.run.withSuccessHandler(rows=>{
   rfHistoryLoading=false;tx=Array.isArray(rows)?rows:[];
   refreshCustomers();renderReports();
   if($('rfHistoryStatus'))$('rfHistoryStatus').textContent='Synced with live POS Ledger · '+new Date().toLocaleTimeString('en-PH');
@@ -1393,7 +1337,7 @@ function rfRefreshLive(silent=true){
  }).withFailureHandler(err=>{
   rfHistoryLoading=false;if(!silent)rfNotify('Unable to refresh live records: '+String(err.message||err),true);
   if(rfHistoryAgain){rfHistoryAgain=false;rfRefreshLive(true);}
- }).rfDeviceCall(rfDeviceToken,'history',[]);
+ }).execute('history',[]);
 }
 function rfFinishJob(job,res){
  if(job._finished)return;
@@ -1427,16 +1371,16 @@ function rfFinishJob(job,res){
  * Verify the Ledger with the same POS ID; never automatically repeat a save/delete.
  */
 function rfVerifyPosOutcome(posId, callback){
- if(!window.google?.script?.run || !rfDeviceToken){callback(null);return;}
+ if(!window.posAPI?.run){callback(null);return;}
  // A lost status callback must not leave the waiting list polling locked forever.
  let settled=false;
  const finish=(value)=>{if(settled)return;settled=true;clearTimeout(timeout);callback(value);};
  const timeout=setTimeout(()=>finish(null),15000);
  try{
-  google.script.run
+  window.posAPI.run
    .withSuccessHandler(result=>finish(result||null))
    .withFailureHandler(()=>finish(null))
-   .rfDeviceCall(rfDeviceToken,'status',[String(posId)]);
+   .execute('status',[String(posId)]);
  }catch(e){finish(null);}
 }
 /* V16.13: The browser may miss a successful Apps Script callback.
@@ -1518,10 +1462,10 @@ function rfLateRefreshViber(id){
  if(job)rfLatePollViber(job,true);
 }
 function rfLatePollViber(job,manual=false){
- if(!job||job.status!=='viber-pending'||!rfDeviceToken||!window.google?.script?.run)return;
+ if(!job||job.status!=='viber-pending'||!window.posAPI?.run)return;
  if(job._viberChecking)return;
  rfLateStopPoll(job);job._viberChecking=true;
- google.script.run.withSuccessHandler(r=>{
+ window.posAPI.run.withSuccessHandler(r=>{
   job._viberChecking=false;
   if(job.status!=='viber-pending')return;
   const state=String(r?.viberStatus||'QUEUED').trim().toUpperCase();
@@ -1548,7 +1492,7 @@ function rfLatePollViber(job,manual=false){
   if(job.status==='viber-pending'&&job._viberChecks<12)
    job._viberTimer=setTimeout(()=>rfLatePollViber(job),10000);
   rfRenderQueue();
- }).rfDeviceCall(rfDeviceToken,'lateAddonLookup',[job.payload.id]);
+ }).execute('lateAddonLookup',[job.payload.id]);
 }
 function rfFinishLateJob(job,res){
  if(!res?.ok||!res.frameVerified||String(res.id||'').toUpperCase()!==String(job.payload.id||'').toUpperCase()){
@@ -1583,7 +1527,7 @@ function rfFinishLateJob(job,res){
 function rfHandleLateAmbiguous(job,err){
  job.status='syncing';rfRenderQueue();
  // Do not retry a payment on network failure. Read the frame and late-payment ledger.
- google.script.run.withSuccessHandler(r=>{
+ window.posAPI.run.withSuccessHandler(r=>{
   if(r&&r.latePaymentRecorded&&!r.repairNeeded&&r.addOnType==='Personalized Letter'){
    rfFinishLateJob(job,{ok:true,frameVerified:true,id:r.id,alreadyRecorded:true,viberStatus:r.viberStatus||'UNCONFIRMED',viberText:''});
   }else{
@@ -1594,7 +1538,7 @@ function rfHandleLateAmbiguous(job,err){
  }).withFailureHandler(e=>{
   rfLateBusy=false;rfJobBusy=false;job.status='failed';job.error='Network error. Check both sheets for '+job.payload.id+'; never resubmit blindly. '+String(err?.message||err).slice(0,120);
   rfRenderQueue();rfRunNextJob();
- }).rfDeviceCall(rfDeviceToken,'lateAddonLookup',[job.payload.id]);
+ }).execute('lateAddonLookup',[job.payload.id]);
 }
 function rfRunNextJob(){
  if(rfJobBusy)return;
@@ -1602,34 +1546,34 @@ function rfRunNextJob(){
  rfJobBusy=true;
  if(job.kind==='late'){
   job.status='syncing';rfRenderQueue();
-  google.script.run.withSuccessHandler(res=>rfFinishLateJob(job,res))
+  window.posAPI.run.withSuccessHandler(res=>rfFinishLateJob(job,res))
    .withFailureHandler(err=>rfHandleLateAmbiguous(job,err))
-   .rfDeviceCall(rfDeviceToken,'lateAddonSave',[job.payload]);
+   .execute('lateAddonSave',[job.payload]);
   return;
  }
  const record=job.record,file=job.file;
  const runSave=proof=>{
    job.status='syncing';rfRenderQueue();rfBeginJobWatch(job);
-   google.script.run.withSuccessHandler(res=>rfFinishJob(job,res))
-     .withFailureHandler(err=>['functions/unavailable','functions/deadline-exceeded','functions/internal'].includes(err.code)?rfHandleAmbiguousSave(job,err):rfFailJob(job,err)).rfDeviceCall(rfDeviceToken,'save',[record,proof]);
+   window.posAPI.run.withSuccessHandler(res=>rfFinishJob(job,res))
+     .withFailureHandler(err=>['functions/unavailable','functions/deadline-exceeded','functions/internal'].includes(err.code)?rfHandleAmbiguousSave(job,err):rfFailJob(job,err)).execute('save',[record,proof]);
  };
  if(!file){runSave(null);return;}
  job.status='uploading';job.percent=0;rfRenderQueue();
- google.script.run.withSuccessHandler(session=>{
+ window.posAPI.run.withSuccessHandler(session=>{
    function piece(start){
      const slice=file.slice(start,Math.min(start+session.chunkSize,file.size));
      const reader=new FileReader();reader.onerror=()=>rfFailJob(job,new Error('Could not read proof file'));
      reader.onload=()=>{
        const bytes=new Uint8Array(reader.result);let binary='';
        for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
-       google.script.run.withSuccessHandler(result=>{
+       window.posAPI.run.withSuccessHandler(result=>{
          job.percent=(result.done?100:(result.uploaded/file.size)*100);rfRenderQueue();
          if(result.done)runSave({uploadId:session.uploadId});else piece(result.uploaded);
-       }).withFailureHandler(err=>rfFailJob(job,err)).rfDeviceCall(rfDeviceToken,'proofChunk',[session.uploadId,btoa(binary),start]);
+       }).withFailureHandler(err=>rfFailJob(job,err)).execute('proofChunk',[session.uploadId,btoa(binary),start]);
      };reader.readAsArrayBuffer(slice);
    }
    piece(0);
- }).withFailureHandler(err=>rfFailJob(job,err)).rfDeviceCall(rfDeviceToken,'proofStart',[record.posId,file.name,file.type,file.size]);
+ }).withFailureHandler(err=>rfFailJob(job,err)).execute('proofStart',[record.posId,file.name,file.type,file.size]);
 }
 function rfSetEmailPending(on){
  const field=$('email'), hint=$('rfEmailPendingHint');
@@ -1671,7 +1615,7 @@ function rfSetFullName(first,last){
 }
 function saveTransaction(){
  if(!window.firebasePOS?.isDemo)return rfNotify('Saving is unavailable while original pricing and payment rules are being verified. No payment has been recorded.',true);
- if(!window.google?.script?.run){rfNotify('Connect to the live POS before submitting.',true);return;}
+ if(!window.posAPI?.run){rfNotify('Connect to the live POS before submitting.',true);return;}
  rfSyncFullName();
  const t=totals();
  if(!value('fullName')||!value('paymentDate')||!rfValidConfirmationEmail())return rfNotify('Enter a customer name (one word or N/A is accepted), a payment date, and a valid email or N/A.',true);
@@ -1723,11 +1667,11 @@ function rfLoadCustomerDirectory(force=false){
    if(age>=0&&age<RF_CUSTOMER_DIRECTORY_TTL)return;
   }
  }catch(e){console.warn('Customer directory cache invalid',e);}}
- if(!window.google?.script?.run){rfSetLookupInfo('Offline: customer directory unavailable');return;}
+ if(!window.posAPI?.run){rfSetLookupInfo('Offline: customer directory unavailable');return;}
  rfCustomerDirectoryFetching=true;
  const button=$('rfLookupRefreshBtn');if(button)button.disabled=true;
  rfSetLookupInfo(force?'Checking newly added REMIT customers…':'Checking for new REMIT customers…');
- google.script.run.withSuccessHandler(result=>{
+ window.posAPI.run.withSuccessHandler(result=>{
   rfCustomerDirectoryFetching=false;if(button)button.disabled=false;
   if(!result||!Array.isArray(result.customers)){
    rfSetLookupInfo('Could not read REMIT customers: invalid server response.');return;
@@ -1741,7 +1685,7 @@ function rfLoadCustomerDirectory(force=false){
   const msg=String(e?.message||e||'Unknown error');
   rfSetLookupInfo('Customer directory import pending.');
   console.error('REMIT customer refresh failed',e);refreshCustomers();
- }).rfDeviceCall(rfDeviceToken,'directory',[force===true]);
+ }).execute('directory',[force===true]);
 }
 function rfMergedCustomers(){
  const byEmail=new Map();
@@ -1785,8 +1729,8 @@ function lookupCustomer(){
  rfCustomerSearchTimer=setTimeout(()=>rfRenderCustomerSuggestions(query),140);
 }
 function rfLoadHistoricalSales(){
- if(!window.google?.script?.run)return;
- google.script.run.withSuccessHandler(result=>{
+ if(!window.posAPI?.run)return;
+ window.posAPI.run.withSuccessHandler(result=>{
   rfHistoricalRows=Array.isArray(result?.rows)?result.rows:[];
   rfHistoricalLoaded=!!result?.ready;
   if($('rfHistSalesNote'))$('rfHistSalesNote').textContent=rfHistoricalLoaded?
@@ -1794,7 +1738,7 @@ function rfLoadHistoricalSales(){
   renderReports();
  }).withFailureHandler(err=>{
   if($('rfHistSalesNote'))$('rfHistSalesNote').textContent='Historical report unavailable: '+String(err?.message||err);
- }).rfDeviceCall(rfDeviceToken,'historical',[]);
+ }).execute('historical',[]);
 }
 function rfManualRefresh(){
  // Never restore transaction history from any browser cache.
@@ -1910,20 +1854,20 @@ function rfLegacyEditAction(h){
 let rfLegacyCurrent=null,rfLegacyBusy=false;
 function rfLegacyClose(){if(rfLegacyBusy)return;document.getElementById('rfLegacyOverlay').classList.remove('show');rfLegacyCurrent=null;}
 function rfLegacyOpen(key){
- if(!rfDeviceReady)return alert('A staff sign-in is required.');
+ if(!posAuthorized)return alert('A staff sign-in is required.');
  rfLegacyCurrent=null;rfLegacyBusy=true;
  document.getElementById('rfLegacyOverlay').classList.add('show');
  document.getElementById('rfLegacyRef').textContent='Loading '+key+'...';
  document.getElementById('rfLegacyWarning').textContent='Reading the original order and checking that it is still a historical entry...';
  document.getElementById('rfLegacyMessage').textContent='';
  document.getElementById('rfLegacySaveButton').disabled=true;
- google.script.run.withSuccessHandler(r=>{
+ window.posAPI.run.withSuccessHandler(r=>{
   rfLegacyBusy=false;rfLegacyCurrent=r;
   document.getElementById('rfLegacyRef').textContent=r.kind+' · '+(r.orderId||'Source row '+r.row);
   document.getElementById('rfLegacyWarning').textContent=r.warning+' Changes are logged; Order IDs and production status remain unchanged.';
   for(const [a,b] of [['Date','date'],['Name','name'],['Email','email'],['Type','type'],['Amount','amount'],['Note','note']])document.getElementById('rfLegacy'+a).value=r[b]??'';
   document.getElementById('rfLegacySaveButton').disabled=false;
- }).withFailureHandler(e=>{rfLegacyBusy=false;document.getElementById('rfLegacyMessage').textContent=String(e?.message||e);}).rfDeviceCall(rfDeviceToken,'legacyGet',[key]);
+ }).withFailureHandler(e=>{rfLegacyBusy=false;document.getElementById('rfLegacyMessage').textContent=String(e?.message||e);}).execute('legacyGet',[key]);
 }
 function rfLegacySave(ev){
  ev.preventDefault();if(rfLegacyBusy||!rfLegacyCurrent)return;
@@ -1938,7 +1882,7 @@ function rfLegacySave(ev){
  if(!confirm('Save changes to the ORIGINAL '+curr.kind+' row? Historical sales and weekly progress will update. No new POS order will be created.'))return;
  rfLegacyBusy=true;document.getElementById('rfLegacySaveButton').disabled=true;
  document.getElementById('rfLegacyMessage').textContent='Saving original order and updating historical report...';
- google.script.run.withSuccessHandler(result=>{
+ window.posAPI.run.withSuccessHandler(result=>{
   rfLegacyBusy=false;rfLegacyCurrent=null;
   document.getElementById('rfLegacyOverlay').classList.remove('show');
   rfLoadHistoricalSales();
@@ -1946,24 +1890,24 @@ function rfLegacySave(ev){
  }).withFailureHandler(e=>{
   rfLegacyBusy=false;document.getElementById('rfLegacySaveButton').disabled=false;
   document.getElementById('rfLegacyMessage').textContent='Save not confirmed: '+String(e?.message||e)+'. Do not resubmit until you verify the original order.';
- }).rfDeviceCall(rfDeviceToken,'legacySave',[payload]);
+ }).execute('legacySave',[payload]);
 }
 
 /* V16.4 paid late letter add-on, by existing Frame Order ID; no new frame order. */
 let rfLateOrder=null,rfLateBusy=false,rfLateSales=[];
-function rfLateOpen(){if(!rfDeviceReady){alert('Sign in first.');return;}document.getElementById('rfLateOverlay').hidden=false;document.getElementById('rfLateId').focus();}
+function rfLateOpen(){if(!posAuthorized){alert('Sign in first.');return;}document.getElementById('rfLateOverlay').hidden=false;document.getElementById('rfLateId').focus();}
 function rfLateClose(){document.getElementById('rfLateOverlay').hidden=true;}
 function rfLateLookup(){
  if(rfLateBusy)return;rfLateOrder=null;document.getElementById('rfLateFields').hidden=true;
  const id=document.getElementById('rfLateId').value.trim().toUpperCase();
  const info=document.getElementById('rfLateInfo');info.textContent='Looking up '+id+'…';document.getElementById('rfLateMsg').textContent='';
- google.script.run.withSuccessHandler(r=>{rfLateOrder=r;info.innerHTML='<b>'+esc(r.id)+'</b> · '+esc(r.name||'Customer not provided')+'<div>Status: '+esc(r.status||'Unknown')+' · Size: '+esc(r.size||'—')+'</div>'+(r.reason?'<div style="color:#ffbbb8">'+esc(r.reason)+'</div>':'');document.getElementById('rfLateFields').hidden=!r.editable;
+ window.posAPI.run.withSuccessHandler(r=>{rfLateOrder=r;info.innerHTML='<b>'+esc(r.id)+'</b> · '+esc(r.name||'Customer not provided')+'<div>Status: '+esc(r.status||'Unknown')+' · Size: '+esc(r.size||'—')+'</div>'+(r.reason?'<div style="color:#ffbbb8">'+esc(r.reason)+'</div>':'');document.getElementById('rfLateFields').hidden=!r.editable;
  const repair=document.getElementById('rfLateRepair');repair.hidden=!r.repairNeeded;
  const vOnly=document.getElementById('rfLateViberOnly');
  vOnly.hidden=true; /* External sending disabled. */ void (r.latePaymentRecorded&&!['SENT','REVIEW','UNCONFIRMED','SENDING','QUEUED','PENDING'].includes(String(r.viberStatus||'').toUpperCase()));
  if(r.latePaymentRecorded){const st=String(r.viberStatus||'QUEUED').toUpperCase();document.getElementById('rfLateMsg').textContent='₱200 PAYMENT SAVED · '+(st==='SENT'?'Viber SENT and confirmed.':(['REVIEW','UNCONFIRMED'].includes(st)?'Viber needs manual review; do not resend blindly.':'Viber is waiting for the original sender. No new payment needed.'));}
  if(r.editable){if(!r.viberConfigured){document.getElementById('rfLateMsg').textContent='Viber reporting is handled by the original remittance project. Payment will be saved first, then queued for Viber; delivery is not yet confirmed.';}document.getElementById('rfLateViberReport').hidden=true;document.getElementById('rfLatePaid').checked=false;document.getElementById('rfLateDate').value=new Date().toLocaleDateString('en-CA');document.getElementById('rfLateMessage').value='';document.getElementById('rfLateCommission').value='';}
- }).withFailureHandler(e=>{info.textContent=String(e.message||e);}).rfDeviceCall(rfDeviceToken,'lateAddonLookup',[id]);
+ }).withFailureHandler(e=>{info.textContent=String(e.message||e);}).execute('lateAddonLookup',[id]);
 }
 function rfLateSave(){if(!window.firebasePOS?.isDemo){document.getElementById('rfLateMsg').textContent='Payment changes are unavailable while original business rules are being verified.';return;}
  if(rfLateBusy||!rfLateOrder||!rfLateOrder.editable)return;
@@ -1988,12 +1932,12 @@ function rfLateRepair(){
  const id=rfLateOrder.id;if(!confirm('Restore the already-paid letter from the saved payment log into Frame Orders AV:AZ? This does NOT record another ₱200 or send another Viber message.'))return;
  rfLateBusy=true;const btn=document.getElementById('rfLateRepair');btn.disabled=true;
  document.getElementById('rfLateMsg').textContent='Restoring existing payment details; no new remittance...';
- google.script.run.withSuccessHandler(r=>{rfLateBusy=false;btn.disabled=false;
+ window.posAPI.run.withSuccessHandler(r=>{rfLateBusy=false;btn.disabled=false;
   if(!r?.ok||!r.frameVerified){document.getElementById('rfLateMsg').textContent='Repair could not be confirmed. No payment created.';return;}
   document.getElementById('rfLateMsg').textContent='Existing ₱200 payment reconciled with Frame Orders. Viber: '+(r.viberStatus||'UNKNOWN')+'. No new payment or report sent.';
   rfLateLookup();rfLateLoadSales();
  }).withFailureHandler(e=>{rfLateBusy=false;btn.disabled=false;document.getElementById('rfLateMsg').textContent='Repair failed: '+String(e?.message||e)+'. No new payment was created.';})
- .rfDeviceCall(rfDeviceToken,'lateAddonSave',[{id,repairOnly:true}]);
+ .execute('lateAddonSave',[{id,repairOnly:true}]);
 }
 function rfLateSendViberOnly(){
  if(rfLateBusy||!rfLateOrder||!rfLateOrder.latePaymentRecorded)return;
@@ -2002,15 +1946,15 @@ function rfLateSendViberOnly(){
  rfLateBusy=true;
  const btn=document.getElementById('rfLateViberOnly');btn.disabled=true;
  const msg=document.getElementById('rfLateMsg');msg.textContent='Sending the existing payment report to Viber Channel…';
- google.script.run.withSuccessHandler(r=>{
+ window.posAPI.run.withSuccessHandler(r=>{
   rfLateBusy=false;btn.disabled=false;
   msg.textContent='No new payment recorded. Viber: '+String(r.viberStatus||'UNKNOWN')+'. '+String(r.viberDetail||'');
   if(r.viberStatus==='SENT'||r.viberStatus==='REVIEW')btn.hidden=true;
  }).withFailureHandler(e=>{rfLateBusy=false;btn.disabled=false;msg.textContent='No new payment. Viber not confirmed: '+String(e.message||e);})
- .rfDeviceCall(rfDeviceToken,'lateAddonSave',[{id:id,viberOnly:true}]);
+ .execute('lateAddonSave',[{id:id,viberOnly:true}]);
 }
 function rfLateCopyViber(){const field=document.getElementById('rfLateViberText');field.focus();field.select();try{document.execCommand('copy');}catch(e){}if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(field.value).catch(()=>{});}
-function rfLateLoadSales(){if(!rfDeviceReady)return;google.script.run.withSuccessHandler(v=>{rfLateSales=Array.isArray(v)?v:[];renderReports();}).withFailureHandler(e=>console.warn('Late add-on sales unavailable:',e)).rfDeviceCall(rfDeviceToken,'lateAddonSales',[]);}
+function rfLateLoadSales(){if(!posAuthorized)return;window.posAPI.run.withSuccessHandler(v=>{rfLateSales=Array.isArray(v)?v:[];renderReports();}).withFailureHandler(e=>console.warn('Late add-on sales unavailable:',e)).execute('lateAddonSales',[]);}
 
 function renderReports(){
  const date=value('reportDate'),daily=tx.filter(t=>t.paymentDate===date),legacy=rfHistoricalRows.filter(h=>h.date===date);
@@ -2158,10 +2102,10 @@ function deleteRecord(id){
  const ids=(r.items||[]).map(i=>i.existingId).join(', ');
  if(!confirm('VOID POS '+id+' and its linked orders?\n\nOrder IDs: '+ids+'\n\nThis removes the active order entries and cannot be undone from the POS. A private audit archive remains.'))return;
  const typed=prompt('Type the exact POS ID '+id+' to confirm deletion:');if(typed!==id)return alert('Deletion cancelled: POS ID did not match.');
- if(!window.google?.script?.run)return alert('The live POS connection is unavailable. Deletion was not started.');
+ if(!window.posAPI?.run)return alert('The live POS connection is unavailable. Deletion was not started.');
  rfSetDeleting(true,id);
  try{
-  google.script.run.withSuccessHandler(result=>{
+  window.posAPI.run.withSuccessHandler(result=>{
    rfSetDeleting(false);
    if(result?.deleted || result?.ok || result?.alreadyDeleted){
      tx=tx.filter(t=>t.posId!==id);refreshCustomers();renderReports();
@@ -2191,7 +2135,7 @@ function deleteRecord(id){
      alert('Deletion result could not be confirmed.'+status+'\nCheck POS Ledger for #'+id+' before trying again.\nConnection error: '+String(e?.message||e).slice(0,160));
      rfRefreshLive(true);
    }),1500);
-  }).rfDeviceCall(rfDeviceToken,'delete',[id,r.updatedAt]);
+  }).execute('delete',[id,r.updatedAt]);
  }catch(e){rfSetDeleting(false);alert('Could not begin deletion: '+(e.message||e));}
 }
 
@@ -2200,20 +2144,20 @@ document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()
 const rfPh = {ready:false,loading:false,provinces:[],localities:[],regions:[],barangays:[],cityCode:'', selectedCity:null, selectedProvince:null, requestSeq:0, touchedArea:false, searchTimer:null, cachedBarangays:new Map()};
 try{localStorage.removeItem('rocketfix-pos-live-v9');}catch(e){}
 $('reportDate').value=today();resetForm();renderReports();refreshCustomers();
-function rfDeviceStartApp(){
- if(!rfDeviceReady)return;
+function startPOS(){
+ if(!posAuthorized)return;
  rfRefreshLive(false);
  rfLoadHistoricalSales();
  rfLoadCustomerDirectory(false);
  rfLoadFramePricing();
  rfPhBootstrap();
- google.script.run.withSuccessHandler(names=>{
+ window.posAPI.run.withSuccessHandler(names=>{
    const select=$('tipRecipient');
    if(!Array.isArray(names)||!names.length)return;
    const previous=select.value;
    select.innerHTML=names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
    select.value=names.includes(previous)?previous:(names.includes('Select')?'Select':names[0]);
- }).withFailureHandler(e=>console.warn('Could not load REMIT staff dropdown',e)).rfDeviceCall(rfDeviceToken,'tips',[]);
+ }).withFailureHandler(e=>console.warn('Could not load REMIT staff dropdown',e)).execute('tips',[]);
 }
 /* V13: Philippine locality autocomplete — selection is explicit, never silently
  * guesses ambiguous names. Uses authorized Apps Script endpoint, not direct
@@ -2261,8 +2205,8 @@ function rfPhResetSelection(){rfPh.selectedCity=null;rfPh.selectedProvince=null;
 function rfPhRestoreSelection(){rfPhResetSelection();const province=$('province').value,city=$('city').value,region=$('region').value;const candidate=rfPhRegionFromProvince(province);if(!region&&candidate)$('region').value=candidate;if(!rfPh.ready)rfPhBootstrap();if(city&&rfPh.ready){const c=rfPh.localities.filter(x=>rfPhNorm(x.name)===rfPhNorm(city));if(c.length===1)rfPhSelectCity(c[0],false);} }
 function rfPhFindProvince(ref){const target=String(ref||'');return rfPh.provinces.find(p=>p.code===target)||rfPh.provinces.find(p=>rfPhNorm(p.name)===rfPhNorm(target))||null;}
 function rfPhFallbackProvinces(){return Object.entries(RF_PH_FALLBACK).flatMap(([region,names])=>names.map(name=>({name,region,code:'',regionCode:''})));}
-function rfPhBootstrap(){if(rfPh.loading||rfPh.localities.length||!rfDeviceReady)return;rfPh.loading=true;rfPh.ready=true;if(!rfPh.provinces.length)rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Province suggestions ready · Loading nationwide cities and barangays…');
- google.script.run.withSuccessHandler(data=>{rfPh.loading=false;rfPh.ready=true;rfPh.provinces=(data.provinces||[]);rfPh.localities=(data.localities||[]);rfPh.regions=(data.regions||[]);if(!rfPh.provinces.length)rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Nationwide location suggestions ready');const focused=document.activeElement?.id;if(['region','province','city','barangay'].includes(focused)&&$(focused).value.trim().length>=2)rfPhInput(focused);}).withFailureHandler(e=>{rfPh.loading=false;rfPh.ready=true;rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Online locations unavailable — province suggestions loaded; enter city/barangay manually.');console.warn('PH lookup unavailable',e);}).rfDeviceCall(rfDeviceToken,'phLocations',['bootstrap','','']);
+function rfPhBootstrap(){if(rfPh.loading||rfPh.localities.length||!posAuthorized)return;rfPh.loading=true;rfPh.ready=true;if(!rfPh.provinces.length)rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Province suggestions ready · Loading nationwide cities and barangays…');
+ window.posAPI.run.withSuccessHandler(data=>{rfPh.loading=false;rfPh.ready=true;rfPh.provinces=(data.provinces||[]);rfPh.localities=(data.localities||[]);rfPh.regions=(data.regions||[]);if(!rfPh.provinces.length)rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Nationwide location suggestions ready');const focused=document.activeElement?.id;if(['region','province','city','barangay'].includes(focused)&&$(focused).value.trim().length>=2)rfPhInput(focused);}).withFailureHandler(e=>{rfPh.loading=false;rfPh.ready=true;rfPh.provinces=rfPhFallbackProvinces();rfPhSetStatus('Online locations unavailable — province suggestions loaded; enter city/barangay manually.');console.warn('PH lookup unavailable',e);}).execute('phLocations',['bootstrap','','']);
 }
 function rfPhHideAll(except){for(const id of ['region','province','city','barangay'])if(id!==except){const x=document.getElementById('rfPhList'+id[0].toUpperCase()+id.slice(1));if(x)x.hidden=true;}}
 function rfPhListEl(field){return document.getElementById('rfPhList'+field[0].toUpperCase()+field.slice(1));}
@@ -2285,32 +2229,32 @@ function rfPhPick(field,data){rfPhHideAll();if(field==='region'){$('region').val
  if(data.province||data.provinceCode){const prov=rfPhFindProvince(data.provinceCode||data.province);if(prov)rfPhSelectProvince(prov,false);else if(data.province)$('province').value=data.province;}
  if(data.region)$('region').value=data.region;rfPhSetArea($('region').value||rfPhRegionFromProvince($('province').value));rfPhSetStatus('Barangay selected — confirm city and province.');
  if(!city&&!data.province&&data.code&&/^\d{6,12}$/.test(String(data.code))){const selectedCode=String(data.code),selectedName=data.name;
-  google.script.run.withSuccessHandler(info=>{if($('barangay').value!==selectedName)return;
+  window.posAPI.run.withSuccessHandler(info=>{if($('barangay').value!==selectedName)return;
     if(info.city){const choices=rfPh.localities.filter(c=>c.code===info.cityCode||rfPhNorm(c.name)===rfPhNorm(info.city));if(choices.length===1)rfPhSelectCity(choices[0],false);else $('city').value=info.city;}
     if(info.province){const prov=rfPhFindProvince(info.provinceCode||info.province);if(prov)rfPhSelectProvince(prov,false);else $('province').value=info.province;}
     const region=info.region||rfPhRegionFromProvince($('province').value);if(region)$('region').value=region;rfPhSetArea(region);rfPhSetStatus('Barangay location checked — please verify address details.');
-   }).withFailureHandler(()=>rfPhSetStatus('Enter city and province to finish the address.')).rfDeviceCall(rfDeviceToken,'phLocations',['barangayResolve','',selectedCode]);}}
+   }).withFailureHandler(()=>rfPhSetStatus('Enter city and province to finish the address.')).execute('phLocations',['barangayResolve','',selectedCode]);}}
 }
 function rfPhSelectProvince(p,clearChildren){rfPh.selectedProvince=p;$('province').value=p.name;const region=rfPh.regions.find(x=>x.code===p.regionCode);const regional=p.region||region?.name||rfPhRegionFromProvince(p.name);if(regional)$('region').value=regional;rfPhSetArea(regional||p.regionCode);if(clearChildren){$('city').value='';$('barangay').value='';rfPh.cityCode='';rfPh.barangays=[];rfPh.selectedCity=null;}
  rfPhSetStatus('Province recognized — '+($('shippingArea').value||'select area')+'.');}
 function rfPhSelectCity(c,clearBarangay){rfPh.selectedCity=c;rfPh.cityCode=c.code||'';$('city').value=c.name;if(clearBarangay)$('barangay').value='';rfPh.barangays=[];const p=rfPhFindProvince(c.provinceCode||c.province);if(p)rfPhSelectProvince(p,false);else if(c.province){$('province').value=c.province;const inferred=rfPhRegionFromProvince(c.province);if(inferred)$('region').value=inferred;rfPhSetArea(c.region||inferred||c.regionCode);}
  else{const rg=rfPh.regions.find(x=>x.code===c.regionCode);if(rg)$('region').value=rg.name;rfPhSetArea(c.region||rg?.name||c.regionCode);}
  if(c.zipCode&&!$('postal').value)$('postal').value=c.zipCode;rfPhSetStatus('City recognized — verify barangay, ZIP and delivery method.');rfPhLoadBarangays();}
-function rfPhLoadBarangays(){const code=rfPh.cityCode;if(!code||!rfDeviceReady)return;if(rfPh.cachedBarangays.has(code)){rfPh.barangays=rfPh.cachedBarangays.get(code);if($('barangay').value.length>=2)rfPhInput('barangay');return;}
- const current=++rfPh.requestSeq;rfPhSetStatus('Loading barangays for '+$('city').value+'…');google.script.run.withSuccessHandler(res=>{if(current!==rfPh.requestSeq||code!==rfPh.cityCode)return;rfPh.barangays=res.records||[];rfPh.cachedBarangays.set(code,rfPh.barangays);rfPhSetStatus('Barangays ready');if($('barangay').value.length>=2)rfPhInput('barangay');}).withFailureHandler(e=>{rfPhSetStatus('Barangay lookup unavailable — type manually.');console.warn(e);}).rfDeviceCall(rfDeviceToken,'phLocations',['barangays','',code]);}
-function rfPhSearchBarangay(v){if($('barangay').value.trim()!==v||!rfDeviceReady)return;if(v.length<3)return;google.script.run.withSuccessHandler(res=>{if($('barangay').value.trim()!==v)return;const arr=res.records||[];const list=arr.map(p=>({name:p.name,hint:[p.city||p.municipality,p.province].filter(Boolean).join(' · ')||'Verify municipality after selecting',data:p,score:rfPhRank(p.name,v)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);rfPhShow('barangay',list);}).withFailureHandler(e=>{rfPhSetStatus('For barangay suggestions, choose the city first.');console.warn(e);}).rfDeviceCall(rfDeviceToken,'phLocations',['barangaySearch',v,'']);}
+function rfPhLoadBarangays(){const code=rfPh.cityCode;if(!code||!posAuthorized)return;if(rfPh.cachedBarangays.has(code)){rfPh.barangays=rfPh.cachedBarangays.get(code);if($('barangay').value.length>=2)rfPhInput('barangay');return;}
+ const current=++rfPh.requestSeq;rfPhSetStatus('Loading barangays for '+$('city').value+'…');window.posAPI.run.withSuccessHandler(res=>{if(current!==rfPh.requestSeq||code!==rfPh.cityCode)return;rfPh.barangays=res.records||[];rfPh.cachedBarangays.set(code,rfPh.barangays);rfPhSetStatus('Barangays ready');if($('barangay').value.length>=2)rfPhInput('barangay');}).withFailureHandler(e=>{rfPhSetStatus('Barangay lookup unavailable — type manually.');console.warn(e);}).execute('phLocations',['barangays','',code]);}
+function rfPhSearchBarangay(v){if($('barangay').value.trim()!==v||!posAuthorized)return;if(v.length<3)return;window.posAPI.run.withSuccessHandler(res=>{if($('barangay').value.trim()!==v)return;const arr=res.records||[];const list=arr.map(p=>({name:p.name,hint:[p.city||p.municipality,p.province].filter(Boolean).join(' · ')||'Verify municipality after selecting',data:p,score:rfPhRank(p.name,v)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);rfPhShow('barangay',list);}).withFailureHandler(e=>{rfPhSetStatus('For barangay suggestions, choose the city first.');console.warn(e);}).execute('phLocations',['barangaySearch',v,'']);}
 document.addEventListener('click',event=>{if(!event.target.closest('.rf-ph-field'))rfPhHideAll();});
 // Normalize exact typed province on blur; only auto-fill when unique.
 ['province','city'].forEach(field=>$(field).addEventListener('change',()=>{const v=$(field).value;const choices=field==='province'?rfPh.provinces:rfPh.localities;const matches=choices.filter(x=>rfPhNorm(x.name)===rfPhNorm(v));if(matches.length===1){if(field==='province')rfPhSelectProvince(matches[0],false);else rfPhSelectCity(matches[0],false);}else if(field==='province'){const reg=rfPhRegionFromProvince(v);if(reg){$('region').value=reg;rfPhSetArea(reg);}}}));
 
-// Device authorization controls all POS startup calls and refresh timers.
-rfDeviceInit();
+// Firebase staff authorization controls business data refreshes.
+
 
 // Refresh REMIT customer directory every 30 minutes while the POS is visible.
-setInterval(()=>{if(rfDeviceReady&&!document.hidden)rfLoadCustomerDirectory(false);},RF_CUSTOMER_DIRECTORY_TTL);
+setInterval(()=>{if(posAuthorized&&!document.hidden)rfLoadCustomerDirectory(false);},RF_CUSTOMER_DIRECTORY_TTL);
 // Refresh authoritative data every 30 seconds while visible; never surface stale browser-cached orders.
-setInterval(()=>{if(rfDeviceReady&&!document.hidden)rfRefreshLive(true);},30000);
-window.addEventListener('visibilitychange',()=>{if(rfDeviceReady&&!document.hidden)rfRefreshLive(true)});
+setInterval(()=>{if(posAuthorized&&!document.hidden)rfRefreshLive(true);},30000);
+window.addEventListener('visibilitychange',()=>{if(posAuthorized&&!document.hidden)rfRefreshLive(true)});
 window.addEventListener('beforeunload',e=>{
  if(rfJobs.some(j=>['waiting','uploading','syncing'].includes(j.status))){e.preventDefault();e.returnValue='';}
 });

@@ -6,14 +6,14 @@ Original HTML (2,398 lines) and connector (1,437 lines) reviewed before interfac
 | Original surface / action | Firebase mapping | Status / dependency |
 | --- | --- | --- |
 | Dark styles, responsive desktop/iPad, four navigation tabs | Original HTML/CSS retained verbatim | Visual regression comparison required |
-| Staff name/company PIN gate | Same card, Firebase email/password, myAccess | Intentional credential change; Firebase roles remain authoritative |
+| Original login/device system | Removed; independent Firebase email/password form + myAccess | Firebase Auth only; active staff and permitted role required. No device token or legacy session |
 | Customer full name, N/A email, phone | saveOrder / getOrder | Preserve original first/last split and exact stored split on edits |
 | Editing IDs, types, file types, rush dates, service notes | saveOrder | Fetched, revision and additional payment labels restored from original; these are receipt labels, not a new partial-payment ledger |
 | Editing ↔ frame linkage, combined eight-digit POS ID | saveOrder atomic transaction | Duplicate link validation required |
 | Frame product, size, dimensions, letter, receiver/address | quote / saveOrder | Original UI retained; live financial writes blocked pending parity approval |
 | Discount, service allocation, tips, Excess | core.validate | Existing service-first calculation retained; Excess separate |
 | Personalized letter / late letter | saveOrder / saveLateLetter + indexed getOrder | Atomic existing backend retained; standard ID lookup and disabled-delivery status adapted; short legacy IDs require reconciliation |
-| Serialized saving queue, lost callback status reads | stable saveOrder request ID + exact immutable request receipt via getOrder | Never repeat payment to retry notification |
+| Serialized saving queue, lost callback status reads | Firebase posAPI transport + stable saveOrder request ID + exact immutable request receipt via getOrder | Never repeat payment to retry notification |
 | Edit saved order | expectedVersion mapped from record version | Backend preserves workflow state and paid recipient |
 | Delete active record | voidOrder | Intentional immutable audited void, never destructive deletion |
 | History / daily / weekly | listOrders pagination; original rendering | No fabricated historical backfill |

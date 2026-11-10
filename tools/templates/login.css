@@ -1,12 +1,12 @@
 /* Fresh login only; the original POS layout remains source-owned. */
-#rfDeviceGate{background:radial-gradient(ellipse at 50% 0%,#17382b66,transparent 58%),#080a0e;padding:28px;overflow:auto}
-#rfDeviceGate::before{display:none}
+#firebaseLogin{background:radial-gradient(ellipse at 50% 0%,#17382b66,transparent 58%),#080a0e;padding:28px;overflow:auto}
+#firebaseLogin::before{display:none}
 .rf-login-card{width:min(440px,100%);margin:auto;background:#14181f;border:1px solid #303b36;border-radius:24px;padding:38px;box-shadow:0 28px 90px #0005}
 .rf-login-logo{display:block;width:170px;height:64px;object-fit:contain;object-position:left;margin-bottom:28px}
 .rf-login-heading>span{display:block;color:#8bdbbe;font-size:10px;font-weight:800;letter-spacing:.18em;margin-bottom:12px}
 .rf-login-heading h1{font-size:32px;letter-spacing:-1px;line-height:1.15;margin:0 0 10px;color:#f2f6fa}
 .rf-login-heading p{font-size:14px;color:#9da8b7;line-height:1.6;margin:0 0 30px}
-#rfDeviceRegisterForm{margin:0}
+#firebaseLoginForm{margin:0}
 .rf-login-card label{font-size:12px;font-weight:650;color:#bbc8c2;margin:0 0 9px}
 .rf-login-card input{height:50px;background:#0c1016;border:1px solid #3b434e;border-radius:11px;padding:12px 14px;margin-bottom:21px;color:#f2f6fa;transition:border-color .15s,box-shadow .15s}
 .rf-login-card input:focus{outline:none;border-color:#5cbf96;box-shadow:0 0 0 3px #5cbf961c}
@@ -16,10 +16,12 @@
 .rf-login-card button:disabled{opacity:.6;cursor:wait}
 .rf-login-footer{display:flex;justify-content:center;gap:10px;color:#75867f;font-size:11px;border-top:1px solid #2a3330;margin-top:28px;padding-top:22px}
 .rf-login-footer span{color:#426351}
-#rfDeviceLoading{text-align:center;padding:10px 0 0;gap:12px}
-#rfDeviceLoading strong{font-size:15px;color:#e8edf3}
-#rfDeviceLoading p{font-size:12px;color:#9da8b7;margin:0;line-height:1.6}
-.rf-login-spinner{width:27px;height:27px;border:2px solid #294b3c;border-top-color:#8bdbbe;border-radius:50%;margin:0 auto 12px;animation:rfDeleteSpin .8s linear infinite}
-#rfDeviceMsg:empty{display:none}
-@media(max-width:520px){#rfDeviceGate{padding:18px}.rf-login-card{padding:30px 24px;border-radius:20px}.rf-login-heading h1{font-size:29px}}
-@media(prefers-reduced-motion:reduce){.rf-login-spinner{animation:none}}
+#loginError:empty{display:none}
+@media(max-width:520px){#firebaseLogin{padding:18px}.rf-login-card{padding:30px 24px;border-radius:20px}.rf-login-heading h1{font-size:29px}}
+
+#firebaseLogin{position:fixed;inset:0;z-index:60000;display:flex;align-items:center;justify-content:center;color:#e8edf3;font-family:Inter,system-ui,Arial,sans-serif}
+#firebaseLogin[hidden]{display:none!important}
+#loginError{font-size:12px;line-height:1.6;color:#ffb6b6;margin:14px 0 0;overflow-wrap:anywhere}
+#loginStatus{font-size:12px;line-height:1.6;color:#9da8b7;margin:14px 0 0}
+#loginStatus:empty{display:none}
+#employeeBadge{font-size:12px;color:#9bebbb;border:1px solid #375a49;border-radius:30px;padding:8px 12px;cursor:pointer}

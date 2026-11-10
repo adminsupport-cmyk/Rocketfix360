@@ -3,11 +3,13 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {validate}=require('../functions/core'),{assertFinancialTesting}=require('../functions/runtime');
 const {toFirebase,fromFirebase,runner}=require('../public/legacy-adapter.cjs');
 const sample=()=>({posId:'12345678',paymentDate:'2026-11-10',first:'N/A',email:'N/A',received:500,items:[{kind:'editing',existingId:'RF12345A',amount:500,orderType:'Fetched',fileType:'NORMAL FILE'}]});
-test('original CSS is retained verbatim and generated interface is reproducible',()=>{
+test('original POS styles are retained while Firebase login replaces obsolete device controls',()=>{
  const source=fs.readFileSync('reference/Original_Index.html','utf8'),output=fs.readFileSync('public/index.html','utf8');
  assert.equal(output,require('../tools/restore-original-ui.cjs').generate());
- const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")),originalStyles);
- for(const match of source.matchAll(/\bid="([^"]+)"/g))assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');
+ const styles=s=>[...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]);const originalStyles=styles(source),migratedStyles=styles(output);assert.deepEqual(migratedStyles.filter(s=>!s.includes("Fresh login only")),originalStyles.filter(s=>!s.includes("Rocketfix secure workstation")));
+ for(const match of source.matchAll(/\bid="([^"]+)"/g)){if(/^rfDevice|^rfCompanyPinInput$/.test(match[1]))continue;assert.ok(output.includes('id="'+match[1]+'"'),match[1]+' retained');}
+ assert.doesNotMatch(output,/rfDevice|rfCompanyPin|rfStaffSign|RF_STAFF|google\.script|Connecting securely/);
+ assert.ok(output.includes('id="firebaseLoginForm"'));assert.ok(output.includes('id="employeeBadge"'));
  for(const match of output.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
  assert.ok(!output.includes('script.google.com/macros'));assert.ok(!output.includes('UNVERIFIED_FIXTURE'));
 });

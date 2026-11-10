@@ -20,8 +20,8 @@ const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/h
   return route.abort();
  });
  await page.goto('http://127.0.0.1:5050');
- await page.locator('#rfDeviceRegisterForm').waitFor({state:'visible'});
- await page.locator('#rfDeviceNameInput').fill('owner@rocketfix.local');await page.locator('#rfCompanyPinInput').fill('Rocketfix-Staging-2026!');await page.locator('#rfDeviceRequestButton').click();await page.locator('#rfDeviceGate').waitFor({state:'hidden'});
+ await page.locator('#firebaseLoginForm').waitFor({state:'visible'});
+ await page.locator('#loginEmail').fill('owner@rocketfix.local');await page.locator('#loginPassword').fill('Rocketfix-Staging-2026!');await page.locator('#loginSubmit').click();await page.locator('#firebaseLogin').waitFor({state:'hidden'});
  let interrupted=false,saveRequests=0;
  await page.route('**/saveOrder',async route=>{saveRequests++;if(!interrupted){interrupted=true;await route.fetch();await route.abort('failed');return;}await route.continue();});
  const saved=[];

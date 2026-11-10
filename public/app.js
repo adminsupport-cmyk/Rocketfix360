@@ -18,10 +18,9 @@ async function history(){
 }
 const unsupported=label=>{throw Error(label+' is unavailable until the original source and staging configuration are verified. No payment was recorded.');};
 async function dispatch(method,args){
- if(method==='rfPosGetPublishedRelease')return {release:0};
- if(method!=='rfDeviceCall')throw Error('Unsupported POS action');
+ if(method!=='execute')throw Error('Unsupported POS action');
  if(!auth.currentUser||!profile)throw Error('Sign in with an authorized employee account');
- const [,action,values=[]]=args;
+ const [action,values=[]]=args;
  switch(action){
  case 'history':return history();
  case 'status':{const posId=String(values[0]),requestId=pending.get(posId);const {order,requestCommitted}=await invoke('getOrder',{posId,...(requestId?{requestId}:{})});if(requestCommitted)pending.delete(posId);return {found:true,status:requestId&&!requestCommitted?'PROCESSING':order.voidedAt?'DELETED':'SYNCED',record:order.voidedAt||requestId&&!requestCommitted?null:adapter.fromFirebase(order)};}
@@ -66,18 +65,38 @@ async function dispatch(method,args){
  default:throw Error('Unsupported POS action: '+action);
  }
 }
-window.google={script:{run:adapter.runner(dispatch)}};
-window.firebasePOS={
- signIn:async(email,password)=>signInWithEmailAndPassword(auth,email,password),
- signOut:async()=>{await signOut(auth);location.reload();},
- isDemo:useEmulators
-};
-onAuthStateChanged(auth,async user=>{
- try{
-  profile=null;
-  if(!user){window.rfFirebaseSession(null);return;}
-  const access=await invoke('myAccess');
-  if(!['owner','admin','sales'].includes(access.role))throw Error('This Admin POS requires an active Owner, Admin, or Sales role.');
-  profile=access;window.rfFirebaseSession(access);
- }catch(error){window.rfFirebaseSession(null,error.message);}
+window.posAPI={run:adapter.runner(dispatch)};
+window.firebasePOS={isDemo:useEmulators};
+const login=document.getElementById('firebaseLogin'),form=document.getElementById('firebaseLoginForm'),button=document.getElementById('loginSubmit'),message=document.getElementById('loginError'),status=document.getElementById('loginStatus');
+let accessGeneration=0;
+function showLogin(error=''){
+ profile=null;window.setPOSAccess(null);login.hidden=false;button.disabled=false;
+ message.textContent=error;status.textContent='';
+}
+form.addEventListener('submit',async event=>{
+ event.preventDefault();if(button.disabled)return;
+ button.disabled=true;message.textContent='';status.textContent='Signing in…';
+ try{const priorUid=auth.currentUser?.uid;const credential=await signInWithEmailAndPassword(auth,document.getElementById('loginEmail').value.trim(),document.getElementById('loginPassword').value);document.getElementById('loginPassword').value='';if(priorUid===credential.user.uid)await authorizeEmployee(credential.user);}
+ catch(error){showLogin(['auth/invalid-credential','auth/wrong-password','auth/user-not-found'].includes(error.code)?'Email or password is incorrect. Please try again.':error.message);}
+ finally{button.disabled=false;}
 });
+document.getElementById('employeeBadge').addEventListener('click',async()=>{
+ if(!confirm('Sign out?'))return;
+ try{await signOut(auth);location.reload();}catch(error){message.textContent=error.message;}
+});
+async function authorizeEmployee(user){
+ const generation=++accessGeneration;
+ showLogin();
+ if(!user)return;
+ status.textContent='Checking employee access…';
+ try{
+  const access=(await httpsCallable(functions,'myAccess',{timeout:15000})({})).data;
+  if(generation!==accessGeneration||auth.currentUser?.uid!==user.uid)return;
+  if(!['owner','admin','sales'].includes(access.role)){
+   showLogin('Access denied. An active Owner, Admin, or Sales staff profile is required. Contact your administrator.');return;
+  }
+  profile=access;message.textContent='';status.textContent='';login.hidden=true;
+  window.setPOSAccess(access);
+ }catch(error){if(generation===accessGeneration)showLogin('Unable to verify employee access. '+error.message);}
+}
+onAuthStateChanged(auth,authorizeEmployee,error=>showLogin('Unable to initialize sign-in. '+error.message));

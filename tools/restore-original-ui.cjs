@@ -7,44 +7,22 @@ function generate(){
  let html=fs.readFileSync(path.join(root,'reference/Original_Index.html'),'utf8');
  const start=html.indexOf('// V16.3: verified company PIN'),end=html.indexOf('const ROCKETFIX_LOGO_URL');
  if(start<0||end<start)throw Error('Original authentication boundary changed');
- const auth=`let rfDeviceReady=false,rfDeviceToken='';
-function rfDeviceError(msg){document.getElementById('rfDeviceMsg').textContent=String(msg||'');}
-function rfDeviceShowMode(mode,title,description){
- document.getElementById('rfDeviceLoading').hidden=mode!=='loading';document.getElementById('rfDeviceRegisterForm').hidden=mode!=='register';
- if(title)document.getElementById('rfDeviceLoadingTitle').textContent=title;
- if(description)document.getElementById('rfDeviceLoadingDescription').textContent=description;
- rfDeviceError('');
-}
-function rfFirebaseSession(profile,error){
- rfDeviceReady=!!profile;rfDeviceToken=profile?.uid||'';
- document.getElementById('rfDeviceGate').hidden=!!profile;
- document.getElementById('rfDeviceRequestButton').disabled=false;
- if(!profile){rfDeviceShowMode('register');rfDeviceError(error||'');return;}
- const label=document.getElementById('rfDeviceUser');label.hidden=false;label.textContent='Staff: '+profile.name;label.onclick=rfStaffSignOut;label.style.cursor='pointer';
+ const auth=`let posAuthorized=false;
+function setPOSAccess(profile){
+ posAuthorized=!!profile;
+ const label=document.getElementById('employeeBadge');label.hidden=!profile;
+ if(!profile)return;
+ label.textContent='Staff: '+profile.name;
  document.querySelector('nav [data-tab="settings"]').hidden=!['owner','admin'].includes(profile.role);
- rfDeviceStartApp();
+ startPOS();
 }
-async function rfDeviceStartRequest(){
- if(!window.firebasePOS)return rfDeviceError('Connection is starting. Please try again.');
- const btn=document.getElementById('rfDeviceRequestButton');if(btn.disabled)return;btn.disabled=true;
- rfDeviceError('');
- const timeout=setTimeout(()=>{if(!rfDeviceReady){btn.disabled=false;rfDeviceError('Sign-in is taking longer than expected. Please check your connection and try again.');}},20000);
- try{await window.firebasePOS.signIn(document.getElementById('rfDeviceNameInput').value.trim(),document.getElementById('rfCompanyPinInput').value);document.getElementById('rfCompanyPinInput').value='';}
- catch(error){btn.disabled=false;rfDeviceShowMode('register');rfDeviceError(error.message);}
- finally{clearTimeout(timeout);if(!rfDeviceReady)btn.disabled=false;}
-}
-function rfStaffSignOut(){if(confirm('Sign out and change staff?'))window.firebasePOS.signOut();}
-function rfDeviceInit(){rfDeviceShowMode('register');}
 `;
  html=html.slice(0,start)+auth+html.slice(end);
+ html=html.replace(/<style>\s*\/\* Rocketfix secure workstation[\s\S]*?<\/style>/,'');
  const gateStart=html.indexOf('<div id="rfDeviceGate">'),gateEnd=html.indexOf('<aside id="rfPosUpdateBanner"');
  if(gateStart<0||gateEnd<gateStart)throw Error('Original login boundary changed');
  html=html.slice(0,gateStart)+fs.readFileSync(path.join(root,'tools/templates/login.html'),'utf8')+html.slice(gateEnd);
  html=html.replace('</head>','<style>'+fs.readFileSync(path.join(root,'tools/templates/login.css'),'utf8')+'</style></head>');
- html=html.replace('Enter your staff name and the company PIN. You will remain signed in for up to 24 hours on this browser.','Enter your employee email and password.');
- html=html.replace('24-HOUR SESSION','EMPLOYEE ACCESS').replace('>Staff name</label>','>Employee email</label>').replace('maxlength="60" autocomplete="name" placeholder="e.g. Joyce Legaspi"','type="email" maxlength="200" autocomplete="username" placeholder="Employee email"');
- html=html.replace('>Company PIN</label>','>Password</label>').replace('inputmode="numeric" pattern="[0-9]*" minlength="8" maxlength="12" autocomplete="off" placeholder="8–12 digit PIN"','autocomplete="current-password" placeholder="Password"');
- html=html.replace('For your security, the PIN is checked by the server and is never saved in this browser.','Use your authorized employee account.');
  html=html.replaceAll('<?= rfPosWebUrl ?>','/');
  html=html.replaceAll('Save Remittance (LIVE)','Save Remittance').replaceAll('Update Transaction (LIVE)','Update Transaction');
  html=html.replaceAll('Saving to Google Sheets','Saving remittance').replace('waiting list checks Google Sheets','waiting list checks the saved payment');
@@ -53,7 +31,6 @@ function rfDeviceInit(){rfDeviceShowMode('register');}
  html=html.replace('stored in your account’s live Drive folder.','available after the staging Drive folder is connected.');
  html=html.replace('Stored in your account’s live Drive folder.','Drive upload is not connected yet.');
  html=html.replace('It will upload to Google Drive when you save.','Drive upload is not connected yet; no payment will be saved with this attachment.');
- html=html.replace('rfDeviceCall(rfDeviceToken,\'save\',[record,proof]);','rfDeviceCall(rfDeviceToken,\'save\',[record,proof]);');
  html=html.replace('.withFailureHandler(err=>rfHandleAmbiguousSave(job,err))',`.withFailureHandler(err=>['functions/unavailable','functions/deadline-exceeded','functions/internal'].includes(err.code)?rfHandleAmbiguousSave(job,err):rfFailJob(job,err))`);
  html=html.replace("if(state==='SENT'||state==='ALREADY_RECORDED'){","if(state==='DISABLED'||state==='SIMULATED'||state==='SENT'||state==='ALREADY_RECORDED'){");
  html=html.replace("const viberText=state==='SENT'?'Viber report SENT.':","const viberText=['DISABLED','SIMULATED'].includes(state)?'Email and Viber sending are disabled.':state==='SENT'?'Viber report SENT.':");
@@ -79,6 +56,14 @@ function rfDeviceInit(){rfDeviceShowMode('register');}
  // Release checks may never navigate back to the live Apps Script POS.
  const release=html.indexOf('// POS release notifier.');
  html=html.slice(0,release)+"</script><script type=\"module\" src=\"/app.bundle.js\"></script></body></html>\n";
+ // Replace the Apps Script-shaped business transport; no device token or Google runtime remains.
+ html=html.replaceAll('.rfDeviceCall(rfDeviceToken,','.execute(')
+  .replaceAll('google.script.run','window.posAPI.run')
+  .replaceAll('window.google?.script?.run','window.posAPI?.run')
+  .replaceAll(' || !rfDeviceToken','').replaceAll('||!rfDeviceToken','')
+  .replaceAll('rfDeviceReady','posAuthorized').replaceAll('rfDeviceStartApp','startPOS')
+  .replaceAll('rfDeviceUser','employeeBadge').replaceAll('rfDeviceInit();','');
+ html=html.replace('// Device authorization controls all POS startup calls and refresh timers.','// Firebase staff authorization controls business data refreshes.');
  return html.replace(/[ \t]+$/gm,'');
 }
 if(require.main===module)fs.writeFileSync(path.join(root,'public/index.html'),generate());
